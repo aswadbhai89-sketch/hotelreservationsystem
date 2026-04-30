@@ -1,0 +1,40 @@
+#include "person.h"
+
+person :: person() {
+	personId = 0;
+	name = "" ;
+	phone = "" ;
+	cnic = "" ;
+	
+}
+
+person::person(int pID , string n , string p , string c){
+    personId = pID;
+    name = n;
+    phone = p;
+    cnic = c;
+}
+
+void person::setName(string name){
+	name = n;
+}
+void person::setphone(string phone){
+	phone = p;
+}
+void person::setCnic(string cnic){
+	cnic=c;
+}
+
+string person::getNmae() const{
+	return name;
+}
+string person::getphone() const{
+	return phone;
+}
+string person::getCnic() const{
+	return cnic;
+}
+
+person::~person(){
+	
+}
