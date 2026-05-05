@@ -1,0 +1,70 @@
+# Project: HotelReservation
+# Makefile created by Embarcadero Dev-C++ 6.3
+
+CPP      = g++.exe -D__DEBUG__
+CC       = gcc.exe -D__DEBUG__
+WINDRES  = windres.exe
+OBJ      = main.o person.o guest.o admin.o Hotelexception.o billing.o booking.o room.o doubleroom.o singleroom.o suiteroom.o records.o filemanager.o rules.o hotelsystem.o
+LINKOBJ  = main.o person.o guest.o admin.o Hotelexception.o billing.o booking.o room.o doubleroom.o singleroom.o suiteroom.o records.o filemanager.o rules.o hotelsystem.o
+LIBS     = -L"C:/Program Files (x86)/Embarcadero/Dev-Cpp/TDM-GCC-64/lib" -L"C:/Program Files (x86)/Embarcadero/Dev-Cpp/TDM-GCC-64/x86_64-w64-mingw32/lib" -static-libgcc -g3
+INCS     = -I"C:/Program Files (x86)/Embarcadero/Dev-Cpp/TDM-GCC-64/include" -I"C:/Program Files (x86)/Embarcadero/Dev-Cpp/TDM-GCC-64/x86_64-w64-mingw32/include" -I"C:/Program Files (x86)/Embarcadero/Dev-Cpp/TDM-GCC-64/lib/gcc/x86_64-w64-mingw32/9.2.0/include"
+CXXINCS  = -I"C:/Program Files (x86)/Embarcadero/Dev-Cpp/TDM-GCC-64/include" -I"C:/Program Files (x86)/Embarcadero/Dev-Cpp/TDM-GCC-64/x86_64-w64-mingw32/include" -I"C:/Program Files (x86)/Embarcadero/Dev-Cpp/TDM-GCC-64/lib/gcc/x86_64-w64-mingw32/9.2.0/include" -I"C:/Program Files (x86)/Embarcadero/Dev-Cpp/TDM-GCC-64/lib/gcc/x86_64-w64-mingw32/9.2.0/include/c++"
+BIN      = HotelReservation.exe
+CXXFLAGS = $(CXXINCS) -g3
+CFLAGS   = $(INCS) -g3
+DEL      = C:\Program Files (x86)\Embarcadero\Dev-Cpp\DevCpp.exe INTERNAL_DEL
+
+.PHONY: all all-before all-after clean clean-custom
+
+all: all-before $(BIN) all-after
+
+clean: clean-custom
+	${DEL} $(OBJ) $(BIN)
+
+$(BIN): $(OBJ)
+	$(CPP) $(LINKOBJ) -o $(BIN) $(LIBS)
+
+main.o: main.cpp
+	$(CPP) -c main.cpp -o main.o $(CXXFLAGS)
+
+person.o: person.cpp
+	$(CPP) -c person.cpp -o person.o $(CXXFLAGS)
+
+guest.o: guest.cpp
+	$(CPP) -c guest.cpp -o guest.o $(CXXFLAGS)
+
+admin.o: admin.cpp
+	$(CPP) -c admin.cpp -o admin.o $(CXXFLAGS)
+
+Hotelexception.o: Hotelexception.cpp
+	$(CPP) -c Hotelexception.cpp -o Hotelexception.o $(CXXFLAGS)
+
+billing.o: billing.cpp
+	$(CPP) -c billing.cpp -o billing.o $(CXXFLAGS)
+
+booking.o: booking.cpp
+	$(CPP) -c booking.cpp -o booking.o $(CXXFLAGS)
+
+room.o: room.cpp
+	$(CPP) -c room.cpp -o room.o $(CXXFLAGS)
+
+doubleroom.o: doubleroom.cpp
+	$(CPP) -c doubleroom.cpp -o doubleroom.o $(CXXFLAGS)
+
+singleroom.o: singleroom.cpp
+	$(CPP) -c singleroom.cpp -o singleroom.o $(CXXFLAGS)
+
+suiteroom.o: suiteroom.cpp
+	$(CPP) -c suiteroom.cpp -o suiteroom.o $(CXXFLAGS)
+
+records.o: records.cpp
+	$(CPP) -c records.cpp -o records.o $(CXXFLAGS)
+
+filemanager.o: filemanager.cpp
+	$(CPP) -c filemanager.cpp -o filemanager.o $(CXXFLAGS)
+
+rules.o: rules.cpp
+	$(CPP) -c rules.cpp -o rules.o $(CXXFLAGS)
+
+hotelsystem.o: hotelsystem.cpp
+	$(CPP) -c hotelsystem.cpp -o hotelsystem.o $(CXXFLAGS)
