@@ -1,0 +1,3 @@
+# Hashes of file build rules.
+b0047246f4e5288023f495fd020b5dd6 CMakeFiles/HotelReservationQt_autogen
+455b3f84dc3be89c33da665f636c930a HotelReservationQt_autogen/timestamp
