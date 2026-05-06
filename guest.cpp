@@ -29,40 +29,120 @@ string Guest::getAddress() const { return address; }
 
 string Guest::getUsername() const { return username; }
 
-void Guest::registerGuest()
+bool Guest::registerGuest()
 {
     cout << "\n----- Guest Registration -----" << endl;
+    cout << "Enter 0 at username to cancel.\n";
     cout << "Create Username: ";
     cin >> username;
+    if (username == "0")
+    {
+        cout << "Registration cancelled.\n";
+        return false;
+    }
     cout << "Create Password: ";
     cin >> password;
     cout << "Enter Guest ID: ";
     cin >> guestID;
+    if (guestID == 0)
+    {
+        username = "";
+        password = "";
+        cout << "Registration cancelled.\n";
+        return false;
+    }
     personId = guestID;
     cin.ignore();
     cout << "Enter Full Name: ";
     getline(cin, name);
+    if (name == "0")
+    {
+        guestID = 0;
+        personId = 0;
+        username = "";
+        password = "";
+        cout << "Registration cancelled.\n";
+        return false;
+    }
     cout << "Enter Phone: ";
     cin >> phone;
+    if (phone == "0")
+    {
+        guestID = 0;
+        personId = 0;
+        username = "";
+        password = "";
+        name = "";
+        cout << "Registration cancelled.\n";
+        return false;
+    }
     cout << "Enter CNIC: ";
     cin >> cnic;
+    if (cnic == "0")
+    {
+        guestID = 0;
+        personId = 0;
+        username = "";
+        password = "";
+        name = "";
+        phone = "";
+        cout << "Registration cancelled.\n";
+        return false;
+    }
     cin.ignore();
     cout << "Enter Address: ";
     getline(cin, address);
+    if (address == "0")
+    {
+        guestID = 0;
+        personId = 0;
+        username = "";
+        password = "";
+        name = "";
+        phone = "";
+        cnic = "";
+        cout << "Registration cancelled.\n";
+        return false;
+    }
     cout << "Registration successful.\n";
+    return true;
 }
 
-void Guest::updateGuest()
+bool Guest::updateGuest()
 {
+    string newName = name;
+    string newPhone = phone;
+    string newAddress = address;
+
     cin.ignore();
+    cout << "Enter 0 to cancel update.\n";
     cout << "\nEnter New Name: ";
-    getline(cin, name);
+    getline(cin, newName);
+    if (newName == "0")
+    {
+        cout << "Update cancelled.\n";
+        return false;
+    }
     cout << "Enter New Phone: ";
-    cin >> phone;
+    cin >> newPhone;
+    if (newPhone == "0")
+    {
+        cout << "Update cancelled.\n";
+        return false;
+    }
     cin.ignore();
     cout << "Enter New Address: ";
-    getline(cin, address);
+    getline(cin, newAddress);
+    if (newAddress == "0")
+    {
+        cout << "Update cancelled.\n";
+        return false;
+    }
+    name = newName;
+    phone = newPhone;
+    address = newAddress;
     cout << "Guest updated.\n";
+    return true;
 }
 
 void Guest::deleteGuest()

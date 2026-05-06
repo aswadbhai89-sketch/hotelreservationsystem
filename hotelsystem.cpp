@@ -226,10 +226,12 @@ void HotelSystem::start()
 void HotelSystem::guestRegister()
 {
     if (guestCount >= 100) { cout << "Limit reached.\n"; return; }
-    guests[guestCount].registerGuest();
-    guestCount++;
-    saveGuests();
-    records.addRecord("Guest registered.");
+    if (guests[guestCount].registerGuest())
+    {
+        guestCount++;
+        saveGuests();
+        records.addRecord("Guest registered.");
+    }
 }
 
 void HotelSystem::guestLogin()
@@ -310,22 +312,26 @@ void HotelSystem::guestMenu(int gi)
         {
             clearScreen();
             int rc = selectRoom();
+            if (rc == 0) { cout << "Booking cancelled.\n"; pauseScreen(); break; }
             if (rc == -1) { cout << "Invalid.\n"; pauseScreen(); break; }
 
             int roomNo = -1; string roomType = ""; double roomPrice = 0; bool found = false;
 
             if (rc == 1) {
-                int idx; cout << "Room Number: "; cin >> idx;
+                int idx; cout << "Room Number (0 to cancel): "; cin >> idx;
+                if (idx == 0) { cout << "Booking cancelled.\n"; pauseScreen(); break; }
                 for (int i = 0; i < singleCount; i++)
                     if (singleRooms[i].getRoomNumber() == idx && singleRooms[i].checkAvailability())
                     { roomNo = idx; roomType = "Single"; roomPrice = singleRooms[i].getPricePerNight(); singleRooms[i].setAvailability(false); found = true; break; }
             } else if (rc == 2) {
-                int idx; cout << "Room Number: "; cin >> idx;
+                int idx; cout << "Room Number (0 to cancel): "; cin >> idx;
+                if (idx == 0) { cout << "Booking cancelled.\n"; pauseScreen(); break; }
                 for (int i = 0; i < doubleCount; i++)
                     if (doubleRooms[i].getRoomNumber() == idx && doubleRooms[i].checkAvailability())
                     { roomNo = idx; roomType = "Double"; roomPrice = doubleRooms[i].getPricePerNight(); doubleRooms[i].setAvailability(false); found = true; break; }
             } else if (rc == 3) {
-                int idx; cout << "Room Number: "; cin >> idx;
+                int idx; cout << "Room Number (0 to cancel): "; cin >> idx;
+                if (idx == 0) { cout << "Booking cancelled.\n"; pauseScreen(); break; }
                 for (int i = 0; i < suiteCount; i++)
                     if (suiteRooms[i].getRoomNumber() == idx && suiteRooms[i].checkAvailability())
                     { roomNo = idx; roomType = "Suite"; roomPrice = suiteRooms[i].getPricePerNight(); suiteRooms[i].setAvailability(false); found = true; break; }
@@ -372,17 +378,22 @@ void HotelSystem::guestMenu(int gi)
                         if (bills[j].getBillID() == bookings[i].getBookingID())
                             bills[j].displayBill();
 
-            int bid; cout << "\nBill ID to Pay: "; cin >> bid;
+            int bid; cout << "\nBill ID to Pay (0 to cancel): "; cin >> bid;
+            if (bid == 0) { cout << "Payment cancelled.\n"; pauseScreen(); break; }
             for (int i = 0; i < billCount; i++)
                 if (bills[i].getBillID() == bid)
                     for (int j = 0; j < bookingCount; j++)
                         if (bookings[j].getBookingID() == bid && bookings[j].getGuestID() == gID)
-                        { bills[i].processPayment(); saveBills(); f = true; }
+                        { if (bills[i].processPayment()) saveBills(); f = true; }
             if (!f) cout << "Bill not found.\n";
             pauseScreen(); break;
         }
 
-        case 7: clearScreen(); guests[gi].updateGuest(); saveGuests(); pauseScreen(); break;
+        case 7:
+            clearScreen();
+            if (guests[gi].updateGuest()) saveGuests();
+            pauseScreen();
+            break;
         case 8: { clearScreen(); Rules t; t.displayHotelPolicies(); pauseScreen(); break; }
         case 0: cout << "Logged out.\n"; break;
         default: cout << "Invalid.\n"; pauseScreen();
@@ -396,9 +407,12 @@ int HotelSystem::selectRoom()
     cout << "  1. Single Room" << endl;
     cout << "  2. Double Room" << endl;
     cout << "  3. Suite Room" << endl;
+    cout << "  0. Back" << endl;
     cout << "  Choice: ";
     int c;
     cin >> c;
+
+    if (c == 0) return 0;
 
     if (c == 1)
     {
@@ -563,13 +577,13 @@ void HotelSystem::adminRoomMenu()
           cout << "\nTotal: " << Room::getTotalRooms() << endl;
           pauseScreen(); break; }
         case 2:
-        { int n; double p; cout << "No: "; cin >> n; cout << "Price: "; cin >> p;
+        { int n; double p; cout << "No (0 to cancel): "; cin >> n; if (n == 0) { cout << "Add cancelled.\n"; pauseScreen(); break; } cout << "Price: "; cin >> p;
           singleRooms[singleCount++] = SingleRoom(n, p); saveRooms(); cout << "Added.\n"; pauseScreen(); break; }
         case 3:
-        { int n; double p; cout << "No: "; cin >> n; cout << "Price: "; cin >> p;
+        { int n; double p; cout << "No (0 to cancel): "; cin >> n; if (n == 0) { cout << "Add cancelled.\n"; pauseScreen(); break; } cout << "Price: "; cin >> p;
           doubleRooms[doubleCount++] = DoubleRoom(n, p); saveRooms(); cout << "Added.\n"; pauseScreen(); break; }
         case 4:
-        { int n; double p; cout << "No: "; cin >> n; cout << "Price: "; cin >> p;
+        { int n; double p; cout << "No (0 to cancel): "; cin >> n; if (n == 0) { cout << "Add cancelled.\n"; pauseScreen(); break; } cout << "Price: "; cin >> p;
           suiteRooms[suiteCount++] = SuiteRoom(n, p); saveRooms(); cout << "Added.\n"; pauseScreen(); break; }
         case 0: break;
         default: cout << "Invalid.\n"; pauseScreen();
@@ -600,12 +614,14 @@ void HotelSystem::adminBookingMenu()
             else for (int i = 0; i < bookingCount; i++) bookings[i].displayBooking();
             pauseScreen(); break;
         case 2:
-        { int id; bool f = false; cout << "Booking ID: "; cin >> id;
+        { int id; bool f = false; cout << "Booking ID (0 to cancel): "; cin >> id;
+          if (id == 0) { cout << "Check-in cancelled.\n"; pauseScreen(); break; }
           for (int i = 0; i < bookingCount; i++)
               if (bookings[i].getBookingID() == id) { bookings[i].checkIn(); saveBookings(); f = true; }
           if (!f) cout << "Not found.\n"; pauseScreen(); break; }
         case 3:
-        { int id; bool f = false; cout << "Booking ID: "; cin >> id;
+        { int id; bool f = false; cout << "Booking ID (0 to cancel): "; cin >> id;
+          if (id == 0) { cout << "Check-out cancelled.\n"; pauseScreen(); break; }
           for (int i = 0; i < bookingCount; i++)
               if (bookings[i].getBookingID() == id)
               { bookings[i].checkOut(); int rn = bookings[i].getRoomNumber();
@@ -615,7 +631,8 @@ void HotelSystem::adminBookingMenu()
                 saveAll(); f = true; }
           if (!f) cout << "Not found.\n"; pauseScreen(); break; }
         case 4:
-        { int id; bool f = false; cout << "Booking ID: "; cin >> id;
+        { int id; bool f = false; cout << "Booking ID (0 to cancel): "; cin >> id;
+          if (id == 0) { cout << "Cancel booking aborted.\n"; pauseScreen(); break; }
           for (int i = 0; i < bookingCount; i++)
               if (bookings[i].getBookingID() == id)
               { bookings[i].cancelBooking(); int rn = bookings[i].getRoomNumber();
@@ -653,13 +670,15 @@ void HotelSystem::adminBillingMenu()
             else for (int i = 0; i < billCount; i++) bills[i].displayBill();
             pauseScreen(); break;
         case 2:
-        { int id; double p; bool f = false; cout << "Bill ID: "; cin >> id;
+        { int id; double p; bool f = false; cout << "Bill ID (0 to cancel): "; cin >> id;
+          if (id == 0) { cout << "Discount cancelled.\n"; pauseScreen(); break; }
           for (int i = 0; i < billCount; i++)
               if (bills[i].getBillID() == id)
               { cout << "Discount %: "; cin >> p; bills[i].applyDiscount(p); saveBills(); f = true; }
           if (!f) cout << "Not found.\n"; pauseScreen(); break; }
         case 3:
-        { clearScreen(); int id; bool f = false; cout << "Booking ID: "; cin >> id;
+        { clearScreen(); int id; bool f = false; cout << "Booking ID (0 to cancel): "; cin >> id;
+          if (id == 0) { cout << "Detailed bill cancelled.\n"; pauseScreen(); break; }
           for (int i = 0; i < bookingCount; i++)
               if (bookings[i].getBookingID() == id)
                   for (int j = 0; j < billCount; j++)
@@ -692,16 +711,24 @@ void HotelSystem::adminRulesMenu()
 
         switch (choice)
         {
-        case 1: rules[ruleCount].addRule(); ruleCount++; saveRules(); pauseScreen(); break;
+        case 1:
+            if (rules[ruleCount].addRule())
+            {
+                ruleCount++;
+                saveRules();
+            }
+            pauseScreen();
+            break;
         case 2:
             clearScreen();
             if (ruleCount == 0) cout << "No rules.\n";
             else for (int i = 0; i < ruleCount; i++) rules[i].displayRule();
             pauseScreen(); break;
         case 3:
-        { int id; bool f = false; cout << "Rule ID: "; cin >> id;
+        { int id; bool f = false; cout << "Rule ID (0 to cancel): "; cin >> id;
+          if (id == 0) { cout << "Rule update cancelled.\n"; pauseScreen(); break; }
           for (int i = 0; i < ruleCount; i++)
-              if (rules[i].getRuleID() == id) { rules[i].updateRule(); saveRules(); f = true; }
+              if (rules[i].getRuleID() == id) { if (rules[i].updateRule()) saveRules(); f = true; }
           if (!f) cout << "Not found.\n"; pauseScreen(); break; }
         case 4: { clearScreen(); Rules t; t.displayHotelPolicies(); pauseScreen(); break; }
         case 0: break;

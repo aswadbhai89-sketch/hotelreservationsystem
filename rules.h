@@ -16,8 +16,8 @@ public:
     void setRuleID(int id);
     int getRuleID() const;
     string getRuleTitle() const;
-    void addRule();
-    void updateRule();
+    bool addRule();
+    bool updateRule();
     void displayRule();
     void displayHotelPolicies();
     string toFileString() const;

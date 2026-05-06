@@ -50,31 +50,47 @@ void Admin::logout(){
 	cout<<"Logged out.\n";
 }
 
-void Admin::changePassword(){
+bool Admin::changePassword(){
 	if(!isLoggedIn){
 		cout<<"Please login first.\n";
-		return;
+		return false;
 	}
 	
 	string oldPass , newPass , confirmPass;
 	
+	cout<<"Enter 0 as old password to cancel.\n";
+	cout<<"Enter old password: ";
 	cin>>oldPass;
+	if(oldPass == "0"){
+		cout<<"Password change cancelled.\n";
+		return false;
+	}
 	if(oldPass != password){
 		cout<<"Wrong old password.\n";
-		return;
+		return false;
 	}
 	cout<<"enter new password: ";
 	cin>>newPass;
+	if(newPass == "0"){
+		cout<<"Password change cancelled.\n";
+		return false;
+	}
 	
 	cout<<"Confirm new Password: ";
 	cin>>confirmPass;
+	if(confirmPass == "0"){
+		cout<<"Password change cancelled.\n";
+		return false;
+	}
 	
 	if(newPass == confirmPass){
 		password = newPass;
 		cout<<"password changed Successfully. \n";
+		return true;
 	}
 	else {
 		cout<<"password do not match. \n";
+		return false;
 	}
 }
 

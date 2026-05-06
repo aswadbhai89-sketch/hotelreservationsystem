@@ -29,7 +29,7 @@ public:
 
     void generateBill(Booking& b);
     void calculateTotal();
-    void processPayment();
+    bool processPayment();
     void displayBill() const;
     void applyDiscount(double percent);
 

@@ -7,21 +7,58 @@ void Rules::setRuleID(int id) { ruleID = id; }
 int Rules::getRuleID() const { return ruleID; }
 string Rules::getRuleTitle() const { return title; }
 
-void Rules::addRule()
+bool Rules::addRule()
 {
+    cout << "Enter 0 as Rule ID to cancel.\n";
     cout << "Rule ID: "; cin >> ruleID;
+    if (ruleID == 0)
+    {
+        cout << "Add rule cancelled.\n";
+        return false;
+    }
     cin.ignore();
     cout << "Title: "; getline(cin, title);
+    if (title == "0")
+    {
+        ruleID = 0;
+        cout << "Add rule cancelled.\n";
+        return false;
+    }
     cout << "Description: "; getline(cin, description);
+    if (description == "0")
+    {
+        ruleID = 0;
+        title = "";
+        cout << "Add rule cancelled.\n";
+        return false;
+    }
     cout << "Rule added.\n";
+    return true;
 }
 
-void Rules::updateRule()
+bool Rules::updateRule()
 {
+    string newTitle = title;
+    string newDescription = description;
+
     cin.ignore();
-    cout << "New Title: "; getline(cin, title);
-    cout << "New Description: "; getline(cin, description);
+    cout << "Enter 0 at title to cancel update.\n";
+    cout << "New Title: "; getline(cin, newTitle);
+    if (newTitle == "0")
+    {
+        cout << "Rule update cancelled.\n";
+        return false;
+    }
+    cout << "New Description: "; getline(cin, newDescription);
+    if (newDescription == "0")
+    {
+        cout << "Rule update cancelled.\n";
+        return false;
+    }
+    title = newTitle;
+    description = newDescription;
     cout << "Rule updated.\n";
+    return true;
 }
 
 void Rules::displayRule()

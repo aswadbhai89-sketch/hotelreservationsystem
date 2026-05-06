@@ -24,8 +24,8 @@ public:
 
     string getUsername() const;
 
-    void registerGuest();
-    void updateGuest();
+    bool registerGuest();
+    bool updateGuest();
     void deleteGuest();
     bool loginGuest(string user, string pass);
 

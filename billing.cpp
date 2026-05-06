@@ -35,16 +35,27 @@ void Billing::calculateTotal()
     totalAmount = roomCharges + serviceCharges + taxAmount;
 }
 
-void Billing::processPayment()
+bool Billing::processPayment()
 {
-    if (totalAmount <= 0) { cout << "No bill.\n"; return; }
-    if (paymentStatus == "Paid") { cout << "Already paid.\n"; return; }
+    if (totalAmount <= 0) { cout << "No bill.\n"; return false; }
+    if (paymentStatus == "Paid") { cout << "Already paid.\n"; return false; }
     cout << "\nTotal: Rs." << totalAmount << endl;
-    cout << "1. Cash  2. Card  3. Online\nMethod: ";
+    cout << "1. Cash  2. Card  3. Online  0. Cancel\nMethod: ";
     int m; cin >> m;
+    if (m == 0)
+    {
+        cout << "Payment cancelled.\n";
+        return false;
+    }
+    if (m < 1 || m > 3)
+    {
+        cout << "Invalid payment method.\n";
+        return false;
+    }
     paymentStatus = "Paid";
     totalRevenue += totalAmount;
     cout << "Payment successful.\n";
+    return true;
 }
 
 void Billing::displayBill() const
