@@ -8,6 +8,16 @@ namespace
         out << value;
         return out.str();
     }
+
+    void appendLine(ostringstream& out, const string& label, const string& value)
+    {
+        out << label << ": " << value << "\n";
+    }
+
+    void appendDivider(ostringstream& out)
+    {
+        out << "----------------------------------------\n";
+    }
 }
 
 void clearScreen()
@@ -847,43 +857,48 @@ string HotelSystem::getGuestInfoText(int guestIndex) const
         return "Guest not found.";
 
     ostringstream out;
-    out << "----- Guest Info -----\n";
-    out << "Guest ID : " << guests[guestIndex].getGuestID() << "\n";
-    out << "Username : " << guests[guestIndex].getUsername() << "\n";
-    out << "Name     : " << guests[guestIndex].getName() << "\n";
-    out << "Phone    : " << guests[guestIndex].getphone() << "\n";
-    out << "CNIC     : " << guests[guestIndex].getCnic() << "\n";
-    out << "Address  : " << guests[guestIndex].getAddress() << "\n";
+    out << "GUEST PROFILE\n";
+    appendDivider(out);
+    appendLine(out, "Guest ID", to_string(guests[guestIndex].getGuestID()));
+    appendLine(out, "Username", guests[guestIndex].getUsername());
+    appendLine(out, "Name", guests[guestIndex].getName());
+    appendLine(out, "Phone", guests[guestIndex].getphone());
+    appendLine(out, "CNIC", guests[guestIndex].getCnic());
+    appendLine(out, "Address", guests[guestIndex].getAddress());
     return out.str();
 }
 
 string HotelSystem::getAvailableRoomsText() const
 {
     ostringstream out;
-    out << "----- Available Rooms -----\n";
+    out << "AVAILABLE ROOMS\n";
+    appendDivider(out);
     bool found = false;
 
-    out << "\nSingle Rooms:\n";
+    out << "\n[SINGLE ROOMS]\n";
     for (int i = 0; i < singleCount; i++)
         if (singleRooms[i].checkAvailability())
         {
-            out << "Room #" << singleRooms[i].getRoomNumber() << " | Rs." << singleRooms[i].getPricePerNight() << "/night\n";
+            out << "Room #" << singleRooms[i].getRoomNumber()
+                << "  |  Rate: Rs." << singleRooms[i].getPricePerNight() << "/night\n";
             found = true;
         }
 
-    out << "\nDouble Rooms:\n";
+    out << "\n[DOUBLE ROOMS]\n";
     for (int i = 0; i < doubleCount; i++)
         if (doubleRooms[i].checkAvailability())
         {
-            out << "Room #" << doubleRooms[i].getRoomNumber() << " | Rs." << doubleRooms[i].getPricePerNight() << "/night\n";
+            out << "Room #" << doubleRooms[i].getRoomNumber()
+                << "  |  Rate: Rs." << doubleRooms[i].getPricePerNight() << "/night\n";
             found = true;
         }
 
-    out << "\nSuite Rooms:\n";
+    out << "\n[SUITE ROOMS]\n";
     for (int i = 0; i < suiteCount; i++)
         if (suiteRooms[i].checkAvailability())
         {
-            out << "Room #" << suiteRooms[i].getRoomNumber() << " | Rs." << suiteRooms[i].getPricePerNight() << "/night\n";
+            out << "Room #" << suiteRooms[i].getRoomNumber()
+                << "  |  Rate: Rs." << suiteRooms[i].getPricePerNight() << "/night\n";
             found = true;
         }
 
@@ -899,19 +914,21 @@ string HotelSystem::getGuestBookingsText(int guestIndex) const
 
     ostringstream out;
     bool found = false;
-    out << "----- My Bookings -----\n";
+    out << "MY BOOKINGS\n";
+    appendDivider(out);
     for (int i = 0; i < bookingCount; i++)
     {
         if (bookings[i].getGuestID() == guests[guestIndex].getGuestID())
         {
-            out << "\nBooking ID : " << bookings[i].getBookingID() << "\n";
-            out << "Room No    : " << bookings[i].getRoomNumber() << "\n";
-            out << "Room Type  : " << bookings[i].getRoomType() << "\n";
-            out << "Price/Night: Rs." << bookings[i].getRoomPrice() << "\n";
-            out << "Check-In   : " << bookings[i].getCheckInDate() << "\n";
-            out << "Check-Out  : " << bookings[i].getCheckOutDate() << "\n";
-            out << "Days       : " << bookings[i].getTotalDays() << "\n";
-            out << "Status     : " << bookings[i].getBookingStatus() << "\n";
+            out << "\nBooking #" << bookings[i].getBookingID() << "\n";
+            appendDivider(out);
+            appendLine(out, "Room No", to_string(bookings[i].getRoomNumber()));
+            appendLine(out, "Room Type", bookings[i].getRoomType());
+            appendLine(out, "Rate / Night", "Rs." + formatMoney(bookings[i].getRoomPrice()));
+            appendLine(out, "Check-In", bookings[i].getCheckInDate());
+            appendLine(out, "Check-Out", bookings[i].getCheckOutDate());
+            appendLine(out, "Total Days", to_string(bookings[i].getTotalDays()));
+            appendLine(out, "Status", bookings[i].getBookingStatus());
             found = true;
         }
     }
@@ -927,7 +944,8 @@ string HotelSystem::getGuestBillsText(int guestIndex) const
 
     ostringstream out;
     bool found = false;
-    out << "----- My Bills -----\n";
+    out << "MY BILLS\n";
+    appendDivider(out);
     for (int i = 0; i < bookingCount; i++)
     {
         if (bookings[i].getGuestID() == guests[guestIndex].getGuestID())
@@ -936,10 +954,11 @@ string HotelSystem::getGuestBillsText(int guestIndex) const
             {
                 if (bills[j].getBillID() == bookings[i].getBookingID())
                 {
-                    out << "\nBill ID        : " << bills[j].getBillID() << "\n";
-                    out << "Room Charges   : Rs." << bills[j].getRoomCharges() << "\n";
-                    out << "Total          : Rs." << bills[j].getTotalAmount() << "\n";
-                    out << "Status         : " << bills[j].getPaymentStatus() << "\n";
+                    out << "\nBill #" << bills[j].getBillID() << "\n";
+                    appendDivider(out);
+                    appendLine(out, "Room Charges", "Rs." + formatMoney(bills[j].getRoomCharges()));
+                    appendLine(out, "Total Amount", "Rs." + formatMoney(bills[j].getTotalAmount()));
+                    appendLine(out, "Status", bills[j].getPaymentStatus());
                     found = true;
                 }
             }
@@ -1064,32 +1083,35 @@ bool HotelSystem::payGuestBillGui(int guestIndex, int billId, int method, string
 
 string HotelSystem::getPoliciesText() const
 {
-    return "----- Hotel Policies -----\n"
-           "1. Check-In: 2:00 PM\n"
-           "2. Check-Out: 12:00 PM\n"
-           "3. No Smoking\n"
-           "4. No Pets\n"
-           "5. ID Required\n"
-           "6. Payment at Check-In\n"
-           "7. Cancel 24hrs Before\n";
+    return "HOTEL POLICIES\n"
+           "----------------------------------------\n"
+           "1. Check-In Time: 2:00 PM\n"
+           "2. Check-Out Time: 12:00 PM\n"
+           "3. Smoking is not allowed\n"
+           "4. Pets are not allowed\n"
+           "5. Valid ID is required\n"
+           "6. Payment is collected at check-in\n"
+           "7. Cancellation must be made 24 hours before arrival\n";
 }
 
 string HotelSystem::getAdminInfoText() const
 {
     ostringstream out;
-    out << "----- Admin Info -----\n";
-    out << "Admin ID  : " << admin.getAdminID() << "\n";
-    out << "Name      : " << admin.getName() << "\n";
-    out << "Username  : " << admin.getUsername() << "\n";
-    out << "Role      : " << admin.getRole() << "\n";
-    out << "Logged In : " << (admin.getIsLoggedIn() ? "Yes" : "No") << "\n";
+    out << "ADMIN PROFILE\n";
+    appendDivider(out);
+    appendLine(out, "Admin ID", to_string(admin.getAdminID()));
+    appendLine(out, "Name", admin.getName());
+    appendLine(out, "Username", admin.getUsername());
+    appendLine(out, "Role", admin.getRole());
+    appendLine(out, "Logged In", admin.getIsLoggedIn() ? "Yes" : "No");
     return out.str();
 }
 
 string HotelSystem::getAllGuestsText() const
 {
     ostringstream out;
-    out << "----- All Guests -----\n";
+    out << "ALL GUESTS\n";
+    appendDivider(out);
     if (guestCount == 0)
     {
         out << "No guests.\n";
@@ -1098,14 +1120,15 @@ string HotelSystem::getAllGuestsText() const
 
     for (int i = 0; i < guestCount; i++)
     {
-        out << "\nGuest ID : " << guests[i].getGuestID() << "\n";
-        out << "Username : " << guests[i].getUsername() << "\n";
-        out << "Name     : " << guests[i].getName() << "\n";
-        out << "Phone    : " << guests[i].getphone() << "\n";
-        out << "CNIC     : " << guests[i].getCnic() << "\n";
-        out << "Address  : " << guests[i].getAddress() << "\n";
+        out << "\nGuest #" << guests[i].getGuestID() << "\n";
+        appendDivider(out);
+        appendLine(out, "Username", guests[i].getUsername());
+        appendLine(out, "Name", guests[i].getName());
+        appendLine(out, "Phone", guests[i].getphone());
+        appendLine(out, "CNIC", guests[i].getCnic());
+        appendLine(out, "Address", guests[i].getAddress());
     }
-    out << "\nTotal: " << guestCount << "\n";
+    out << "\nTotal Guests: " << guestCount << "\n";
     return out.str();
 }
 
@@ -1116,13 +1139,14 @@ string HotelSystem::getGuestByIdText(int guestId) const
         if (guests[i].getGuestID() == guestId)
         {
             ostringstream out;
-            out << "----- Guest Found -----\n";
-            out << "Guest ID : " << guests[i].getGuestID() << "\n";
-            out << "Username : " << guests[i].getUsername() << "\n";
-            out << "Name     : " << guests[i].getName() << "\n";
-            out << "Phone    : " << guests[i].getphone() << "\n";
-            out << "CNIC     : " << guests[i].getCnic() << "\n";
-            out << "Address  : " << guests[i].getAddress() << "\n";
+            out << "GUEST RECORD\n";
+            appendDivider(out);
+            appendLine(out, "Guest ID", to_string(guests[i].getGuestID()));
+            appendLine(out, "Username", guests[i].getUsername());
+            appendLine(out, "Name", guests[i].getName());
+            appendLine(out, "Phone", guests[i].getphone());
+            appendLine(out, "CNIC", guests[i].getCnic());
+            appendLine(out, "Address", guests[i].getAddress());
             return out.str();
         }
     }
@@ -1153,13 +1177,14 @@ bool HotelSystem::deleteGuestGui(int guestId, string& message)
 string HotelSystem::getAllRoomsText() const
 {
     ostringstream out;
-    out << "----- Rooms -----\n";
+    out << "ROOM INVENTORY\n";
+    appendDivider(out);
     for (int i = 0; i < singleCount; i++)
-        out << "Single  | Room #" << singleRooms[i].getRoomNumber() << " | Rs." << singleRooms[i].getPricePerNight() << " | " << (singleRooms[i].checkAvailability() ? "Available" : "Occupied") << "\n";
+        out << "Single  | Room #" << singleRooms[i].getRoomNumber() << " \n| Rs." << singleRooms[i].getPricePerNight() << "\n | " << (singleRooms[i].checkAvailability() ? "Available" : "Occupied") << "\n";
     for (int i = 0; i < doubleCount; i++)
-        out << "Double  | Room #" << doubleRooms[i].getRoomNumber() << " | Rs." << doubleRooms[i].getPricePerNight() << " | " << (doubleRooms[i].checkAvailability() ? "Available" : "Occupied") << "\n";
+        out << "Double  | Room #" << doubleRooms[i].getRoomNumber() << " \n| Rs." << doubleRooms[i].getPricePerNight() << "\n | " << (doubleRooms[i].checkAvailability() ? "Available" : "Occupied") << "\n";
     for (int i = 0; i < suiteCount; i++)
-        out << "Suite   | Room #" << suiteRooms[i].getRoomNumber() << " | Rs." << suiteRooms[i].getPricePerNight() << " | " << (suiteRooms[i].checkAvailability() ? "Available" : "Occupied") << "\n";
+        out << "Suite   | Room #" << suiteRooms[i].getRoomNumber() << " \n| Rs." << suiteRooms[i].getPricePerNight() << "\n | " << (suiteRooms[i].checkAvailability() ? "Available" : "Occupied") << "\n";
     return out.str();
 }
 
@@ -1209,7 +1234,8 @@ bool HotelSystem::addRoomGui(string roomType, int roomNumber, double price, stri
 string HotelSystem::getAllBookingsText() const
 {
     ostringstream out;
-    out << "----- Bookings -----\n";
+    out << "ALL BOOKINGS\n";
+    appendDivider(out);
     if (bookingCount == 0)
     {
         out << "No bookings.\n";
@@ -1217,14 +1243,15 @@ string HotelSystem::getAllBookingsText() const
     }
     for (int i = 0; i < bookingCount; i++)
     {
-        out << "\nBooking ID : " << bookings[i].getBookingID() << "\n";
-        out << "Guest ID   : " << bookings[i].getGuestID() << "\n";
-        out << "Room No    : " << bookings[i].getRoomNumber() << "\n";
-        out << "Room Type  : " << bookings[i].getRoomType() << "\n";
-        out << "Check-In   : " << bookings[i].getCheckInDate() << "\n";
-        out << "Check-Out  : " << bookings[i].getCheckOutDate() << "\n";
-        out << "Days       : " << bookings[i].getTotalDays() << "\n";
-        out << "Status     : " << bookings[i].getBookingStatus() << "\n";
+        out << "\nBooking #" << bookings[i].getBookingID() << "\n";
+        appendDivider(out);
+        appendLine(out, "Guest ID", to_string(bookings[i].getGuestID()));
+        appendLine(out, "Room No", to_string(bookings[i].getRoomNumber()));
+        appendLine(out, "Room Type", bookings[i].getRoomType());
+        appendLine(out, "Check-In", bookings[i].getCheckInDate());
+        appendLine(out, "Check-Out", bookings[i].getCheckOutDate());
+        appendLine(out, "Days", to_string(bookings[i].getTotalDays()));
+        appendLine(out, "Status", bookings[i].getBookingStatus());
     }
     return out.str();
 }
@@ -1291,7 +1318,8 @@ bool HotelSystem::cancelBookingGui(int bookingId, string& message)
 string HotelSystem::getAllBillsText() const
 {
     ostringstream out;
-    out << "----- Bills -----\n";
+    out << "ALL BILLS\n";
+    appendDivider(out);
     if (billCount == 0)
     {
         out << "No bills.\n";
@@ -1299,10 +1327,11 @@ string HotelSystem::getAllBillsText() const
     }
     for (int i = 0; i < billCount; i++)
     {
-        out << "\nBill ID        : " << bills[i].getBillID() << "\n";
-        out << "Room Charges   : Rs." << bills[i].getRoomCharges() << "\n";
-        out << "Total          : Rs." << bills[i].getTotalAmount() << "\n";
-        out << "Status         : " << bills[i].getPaymentStatus() << "\n";
+        out << "\nBill #" << bills[i].getBillID() << "\n";
+        appendDivider(out);
+        appendLine(out, "Room Charges", "Rs." + formatMoney(bills[i].getRoomCharges()));
+        appendLine(out, "Total Amount", "Rs." + formatMoney(bills[i].getTotalAmount()));
+        appendLine(out, "Status", bills[i].getPaymentStatus());
     }
     return out.str();
 }
@@ -1335,16 +1364,16 @@ string HotelSystem::getDetailedBillText(int bookingId) const
             {
                 if (bills[j].getBillID() == bookingId)
                 {
-                    out << "===== DETAILED BILL =====\n";
-                    out << "Booking ID : " << bookings[i].getBookingID() << "\n";
-                    out << "Guest ID   : " << bookings[i].getGuestID() << "\n";
-                    out << "Room       : " << bookings[i].getRoomType() << " #" << bookings[i].getRoomNumber() << "\n";
-                    out << "Price/Night: Rs." << bookings[i].getRoomPrice() << "\n";
-                    out << "Days       : " << bookings[i].getTotalDays() << "\n";
-                    out << "Room Cost  : Rs." << bills[j].getRoomCharges() << "\n";
-                    out << "Total      : Rs." << bills[j].getTotalAmount() << "\n";
-                    out << "Payment    : " << bills[j].getPaymentStatus() << "\n";
-                    out << "=========================\n";
+                    out << "DETAILED BILL\n";
+                    appendDivider(out);
+                    appendLine(out, "Booking ID", to_string(bookings[i].getBookingID()));
+                    appendLine(out, "Guest ID", to_string(bookings[i].getGuestID()));
+                    appendLine(out, "Room", bookings[i].getRoomType() + " #" + to_string(bookings[i].getRoomNumber()));
+                    appendLine(out, "Price / Night", "Rs." + formatMoney(bookings[i].getRoomPrice()));
+                    appendLine(out, "Days", to_string(bookings[i].getTotalDays()));
+                    appendLine(out, "Room Cost", "Rs." + formatMoney(bills[j].getRoomCharges()));
+                    appendLine(out, "Total Amount", "Rs." + formatMoney(bills[j].getTotalAmount()));
+                    appendLine(out, "Payment Status", bills[j].getPaymentStatus());
                     return out.str();
                 }
             }
@@ -1355,13 +1384,14 @@ string HotelSystem::getDetailedBillText(int bookingId) const
 
 string HotelSystem::getRevenueText() const
 {
-    return "Revenue: Rs." + formatMoney(Billing::getTotalRevenue());
+    return "TOTAL REVENUE\n----------------------------------------\nRs." + formatMoney(Billing::getTotalRevenue());
 }
 
 string HotelSystem::getRulesText() const
 {
     ostringstream out;
-    out << "----- Rules -----\n";
+    out << "HOTEL RULES\n";
+    appendDivider(out);
     if (ruleCount == 0)
     {
         out << "No rules.\n";
@@ -1369,9 +1399,10 @@ string HotelSystem::getRulesText() const
     }
     for (int i = 0; i < ruleCount; i++)
     {
-        out << "\nRule ID      : " << rules[i].getRuleID() << "\n";
-        out << "Title        : " << rules[i].getRuleTitle() << "\n";
-        out << "Description  : " << rules[i].getDescription() << "\n";
+        out << "\nRule #" << rules[i].getRuleID() << "\n";
+        appendDivider(out);
+        appendLine(out, "Title", rules[i].getRuleTitle());
+        appendLine(out, "Description", rules[i].getDescription());
     }
     return out.str();
 }

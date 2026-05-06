@@ -25,6 +25,12 @@ enum ControlIds
     ID_EDIT_OUTPUT,
     ID_STATUS_LABEL,
     ID_TITLE_LABEL,
+    ID_SUBTITLE_LABEL,
+    ID_GROUP_SIDEBAR,
+    ID_GROUP_FORM,
+    ID_GROUP_WORKSPACE,
+    ID_GROUP_HOME,
+    ID_HOME_TEXT,
     ID_FIELD_BASE = 200,
     ID_LABEL_BASE = 300
 };
@@ -35,7 +41,13 @@ static int gGuestIndex = -1;
 
 static HWND gMainWnd = NULL;
 static HWND gTitle = NULL;
+static HWND gSubtitle = NULL;
 static HWND gStatus = NULL;
+static HWND gGroupSidebar = NULL;
+static HWND gGroupForm = NULL;
+static HWND gGroupWorkspace = NULL;
+static HWND gGroupHome = NULL;
+static HWND gHomeText = NULL;
 static HWND gBtnHome = NULL;
 static HWND gBtnBack = NULL;
 static HWND gBtnLogout = NULL;
@@ -47,7 +59,15 @@ static HWND gMenuList = NULL;
 static HWND gOutput = NULL;
 static HWND gFieldLabels[7] = {0};
 static HWND gFieldEdits[7] = {0};
-static HFONT gFont = NULL;
+
+static HFONT gFontBase = NULL;
+static HFONT gFontTitle = NULL;
+static HFONT gFontSubtitle = NULL;
+static HFONT gFontSection = NULL;
+static HFONT gFontMono = NULL;
+
+static HBRUSH gBrushWindow = NULL;
+static HBRUSH gBrushHeader = NULL;
 
 static const char* GUEST_MENU_ITEMS[] =
 {
@@ -112,9 +132,9 @@ void ShowControl(HWND hwnd, bool show)
     ShowWindow(hwnd, show ? SW_SHOW : SW_HIDE);
 }
 
-void ApplyFont(HWND hwnd)
+void ApplyFont(HWND hwnd, HFONT font)
 {
-    SendMessage(hwnd, WM_SETFONT, (WPARAM)gFont, TRUE);
+    SendMessage(hwnd, WM_SETFONT, (WPARAM)font, TRUE);
 }
 
 void ShowField(int index, const string& label, const string& value, bool password = false)
@@ -137,11 +157,6 @@ void HideAllFields()
         ShowControl(gFieldLabels[i], false);
         ShowControl(gFieldEdits[i], false);
     }
-}
-
-void ClearOutput()
-{
-    SetText(gOutput, "");
 }
 
 void FillMenu(const char** items, int count)
@@ -171,22 +186,75 @@ double ToDouble(const string& text)
 
 void SetOutputText(const string& text)
 {
-    SetText(gOutput, text);
+    string normalized;
+    normalized.reserve(text.size() * 2);
+
+    for (size_t i = 0; i < text.size(); i++)
+    {
+        if (text[i] == '\n')
+        {
+            if (i == 0 || text[i - 1] != '\r')
+                normalized += '\r';
+            normalized += '\n';
+        }
+        else
+        {
+            normalized += text[i];
+        }
+    }
+
+    SetText(gOutput, normalized);
+}
+
+void LayoutControls()
+{
+    RECT rc;
+    GetClientRect(gMainWnd, &rc);
+
+    int width = rc.right - rc.left;
+    int height = rc.bottom - rc.top;
+    int margin = 20;
+    int headerHeight = 110;
+    int contentTop = headerHeight + 14;
+    int contentHeight = height - contentTop - margin;
+    int leftWidth = 280;
+    int formWidth = 330;
+    int workLeft = margin + leftWidth + formWidth + 30;
+    int workWidth = width - workLeft - margin;
+
+    MoveWindow(gTitle, 28, 18, 660, 36, TRUE);
+    MoveWindow(gSubtitle, 28, 56, 880, 24, TRUE);
+    MoveWindow(gStatus, 28, 84, width - 56, 20, TRUE);
+
+    MoveWindow(gBtnHome, width - 286, 24, 80, 34, TRUE);
+    MoveWindow(gBtnBack, width - 196, 24, 80, 34, TRUE);
+    MoveWindow(gBtnLogout, width - 106, 24, 80, 34, TRUE);
+
+    MoveWindow(gGroupSidebar, margin, contentTop, leftWidth, contentHeight, TRUE);
+    MoveWindow(gMenuList, margin + 16, contentTop + 30, leftWidth - 32, contentHeight - 46, TRUE);
+
+    MoveWindow(gGroupForm, margin + leftWidth + 15, contentTop, formWidth, contentHeight, TRUE);
+    for (int i = 0; i < 7; i++)
+    {
+        int y = contentTop + 42 + (i * 56);
+        MoveWindow(gFieldLabels[i], margin + leftWidth + 30, y, formWidth - 44, 18, TRUE);
+        MoveWindow(gFieldEdits[i], margin + leftWidth + 30, y + 20, formWidth - 60, 27, TRUE);
+    }
+    MoveWindow(gBtnSubmit, margin + leftWidth + 30, contentTop + contentHeight - 56, formWidth - 60, 36, TRUE);
+
+    MoveWindow(gGroupWorkspace, workLeft, contentTop, workWidth, contentHeight, TRUE);
+    MoveWindow(gOutput, workLeft + 16, contentTop + 30, workWidth - 32, contentHeight - 46, TRUE);
+
+    MoveWindow(gGroupHome, 28, contentTop + 10, width - 56, 390, TRUE);
+    MoveWindow(gHomeText, 48, contentTop + 52, width - 96, 96, TRUE);
+    MoveWindow(gBtnGuestRegister, 48, contentTop + 176, 260, 50, TRUE);
+    MoveWindow(gBtnGuestLogin, 48, contentTop + 238, 260, 50, TRUE);
+    MoveWindow(gBtnAdminLogin, 48, contentTop + 300, 260, 50, TRUE);
 }
 
 void ConfigureGuestPanel();
 void ConfigureAdminPanel();
 void RenderScreen();
-
-void ShowGuestMenuView()
-{
-    ConfigureGuestPanel();
-}
-
-void ShowAdminMenuView()
-{
-    ConfigureAdminPanel();
-}
 
 void GoHome()
 {
@@ -217,6 +285,9 @@ void ConfigureGuestPanel()
     ShowControl(gBtnSubmit, true);
     ShowControl(gOutput, true);
     ShowControl(gMenuList, true);
+    SetText(gGroupSidebar, " Guest Actions ");
+    SetText(gGroupForm, " Action Form ");
+    SetText(gGroupWorkspace, " Workspace ");
 
     switch (choice)
     {
@@ -270,8 +341,6 @@ void ConfigureGuestPanel()
         SetOutputText(gHotel.getPoliciesText());
         SetStatus("Showing hotel policies.");
         break;
-    default:
-        break;
     }
 }
 
@@ -282,6 +351,9 @@ void ConfigureAdminPanel()
     ShowControl(gBtnSubmit, true);
     ShowControl(gOutput, true);
     ShowControl(gMenuList, true);
+    SetText(gGroupSidebar, " Admin Actions ");
+    SetText(gGroupForm, " Action Form ");
+    SetText(gGroupWorkspace, " Workspace ");
 
     switch (choice)
     {
@@ -407,7 +479,7 @@ void ConfigureAdminPanel()
         break;
     case 20:
         SetText(gBtnSubmit, "Load Records File");
-        SetOutputText("Click the button to load saved record data.");
+        SetOutputText("Click the action button to load saved record data.");
         SetStatus("Load records text from file.");
         break;
     case 21:
@@ -428,43 +500,61 @@ void ConfigureAdminPanel()
         SetOutputText(gHotel.getPoliciesText());
         SetStatus("Showing hotel policies.");
         break;
-    default:
-        break;
     }
 }
 
 void RenderScreen()
 {
     HideAllFields();
-    ShowControl(gBtnHome, true);
-    ShowControl(gTitle, true);
-    ShowControl(gStatus, true);
+    LayoutControls();
 
+    ShowControl(gTitle, true);
+    ShowControl(gSubtitle, true);
+    ShowControl(gStatus, true);
+    ShowControl(gBtnHome, true);
+
+    ShowControl(gBtnBack, false);
+    ShowControl(gBtnLogout, false);
     ShowControl(gBtnGuestRegister, false);
     ShowControl(gBtnGuestLogin, false);
     ShowControl(gBtnAdminLogin, false);
-    ShowControl(gBtnBack, false);
-    ShowControl(gBtnLogout, false);
     ShowControl(gBtnSubmit, false);
     ShowControl(gMenuList, false);
     ShowControl(gOutput, false);
+    ShowControl(gGroupSidebar, false);
+    ShowControl(gGroupForm, false);
+    ShowControl(gGroupWorkspace, false);
+    ShowControl(gGroupHome, false);
+    ShowControl(gHomeText, false);
 
     switch (gScreen)
     {
     case SCREEN_HOME:
         SetText(gTitle, "Hotel Reservation System");
+        SetText(gSubtitle, "Desktop dashboard.");
         SetStatus("Choose how you want to continue.");
+        ShowControl(gGroupHome, true);
+        ShowControl(gHomeText, true);
+        SetText(gGroupHome, " Welcome ");
+        SetText(gHomeText,
+            "Use Guest Register to create a guest account.\r\n"
+            "Use Guest Login to manage stays, bills, and profile information.\r\n"
+            "Use Admin Login to manage rooms, bookings, billing, rules, and records.");
         ShowControl(gBtnGuestRegister, true);
         ShowControl(gBtnGuestLogin, true);
         ShowControl(gBtnAdminLogin, true);
-        SetOutputText("");
         break;
     case SCREEN_GUEST_REGISTER:
         SetText(gTitle, "Guest Registration");
+        SetText(gSubtitle, "Create a guest account with profile details and secure login credentials.");
         SetStatus("Fill in the registration form.");
         ShowControl(gBtnBack, true);
         ShowControl(gBtnSubmit, true);
         ShowControl(gOutput, true);
+        ShowControl(gGroupForm, true);
+        ShowControl(gGroupWorkspace, true);
+        SetText(gGroupForm, " Registration Form ");
+        SetText(gGroupWorkspace, " Guidance ");
         SetText(gBtnSubmit, "Register Guest");
         ShowField(0, "Username", "");
         ShowField(1, "Password", "", true);
@@ -473,41 +563,61 @@ void RenderScreen()
         ShowField(4, "Phone", "");
         ShowField(5, "CNIC", "");
         ShowField(6, "Address", "");
-        SetOutputText("Create a new guest account.");
+        SetOutputText("Create a new guest account.\r\n\r\nRecommended: use a unique Guest ID and memorable username.");
         break;
     case SCREEN_GUEST_LOGIN:
         SetText(gTitle, "Guest Login");
-        SetStatus("Enter guest credentials.");
+        SetText(gSubtitle, "Access your reservations, payment details, and personal information.");
+        SetStatus("Enter guest credentials and continue.");
         ShowControl(gBtnBack, true);
         ShowControl(gBtnSubmit, true);
         ShowControl(gOutput, true);
+        ShowControl(gGroupForm, true);
+        ShowControl(gGroupWorkspace, true);
+        SetText(gGroupForm, " Login Form ");
+        SetText(gGroupWorkspace, " Guidance ");
         SetText(gBtnSubmit, "Login as Guest");
         ShowField(0, "Username", "");
         ShowField(1, "Password", "", true);
-        SetOutputText("Use your guest username and password to log in.");
+        SetOutputText("Enter your guest username and password, then click Login as Guest.");
         break;
     case SCREEN_ADMIN_LOGIN:
         SetText(gTitle, "Admin Login");
-        SetStatus("Enter admin credentials.");
+        SetText(gSubtitle, "Open the hotel operations workspace for rooms, bookings, billing, records, and policies.");
+        SetStatus("Enter admin credentials and continue.");
         ShowControl(gBtnBack, true);
         ShowControl(gBtnSubmit, true);
         ShowControl(gOutput, true);
+        ShowControl(gGroupForm, true);
+        ShowControl(gGroupWorkspace, true);
+        SetText(gGroupForm, " Login Form ");
+        SetText(gGroupWorkspace, " Guidance ");
         SetText(gBtnSubmit, "Login as Admin");
         ShowField(0, "Username", "");
         ShowField(1, "Password", "", true);
-        SetOutputText("Use the admin credentials to log in.");
+        SetOutputText("Default admin credentials:\r\nUsername: admin\r\nPassword: 1234");
         break;
     case SCREEN_GUEST_PANEL:
         SetText(gTitle, "Guest Dashboard");
+        SetText(gSubtitle, "Professional workspace for bookings, bills, profile updates, and hotel policy review.");
+        SetStatus("Guest workspace ready.");
         ShowControl(gBtnLogout, true);
+        ShowControl(gGroupSidebar, true);
+        ShowControl(gGroupForm, true);
+        ShowControl(gGroupWorkspace, true);
         FillMenu(GUEST_MENU_ITEMS, sizeof(GUEST_MENU_ITEMS) / sizeof(GUEST_MENU_ITEMS[0]));
-        ShowGuestMenuView();
+        ConfigureGuestPanel();
         break;
     case SCREEN_ADMIN_PANEL:
         SetText(gTitle, "Admin Dashboard");
+        SetText(gSubtitle, "Professional workspace for guest operations, room inventory, booking control, billing, rules, and records.");
+        SetStatus("Admin workspace ready.");
         ShowControl(gBtnLogout, true);
+        ShowControl(gGroupSidebar, true);
+        ShowControl(gGroupForm, true);
+        ShowControl(gGroupWorkspace, true);
         FillMenu(ADMIN_MENU_ITEMS, sizeof(ADMIN_MENU_ITEMS) / sizeof(ADMIN_MENU_ITEMS[0]));
-        ShowAdminMenuView();
+        ConfigureAdminPanel();
         break;
     }
 }
@@ -520,12 +630,8 @@ void HandleGuestAction()
 
     switch (choice)
     {
-    case 0:
-        SetOutputText(gHotel.getGuestInfoText(gGuestIndex));
-        break;
-    case 1:
-        SetOutputText(gHotel.getAvailableRoomsText());
-        break;
+    case 0: SetOutputText(gHotel.getGuestInfoText(gGuestIndex)); break;
+    case 1: SetOutputText(gHotel.getAvailableRoomsText()); break;
     case 2:
         ok = gHotel.bookRoomGui(
             gGuestIndex,
@@ -536,14 +642,10 @@ void HandleGuestAction()
             ToInt(GetText(gFieldEdits[4])),
             message);
         SetStatus(message);
-        SetOutputText(gHotel.getAvailableRoomsText() + "\n" + gHotel.getGuestBookingsText(gGuestIndex));
+        SetOutputText(gHotel.getAvailableRoomsText() + "\r\n" + gHotel.getGuestBookingsText(gGuestIndex));
         break;
-    case 3:
-        SetOutputText(gHotel.getGuestBookingsText(gGuestIndex));
-        break;
-    case 4:
-        SetOutputText(gHotel.getGuestBillsText(gGuestIndex));
-        break;
+    case 3: SetOutputText(gHotel.getGuestBookingsText(gGuestIndex)); break;
+    case 4: SetOutputText(gHotel.getGuestBillsText(gGuestIndex)); break;
     case 5:
         ok = gHotel.payGuestBillGui(
             gGuestIndex,
@@ -563,10 +665,9 @@ void HandleGuestAction()
         SetStatus(message);
         SetOutputText(gHotel.getGuestInfoText(gGuestIndex));
         break;
-    case 7:
-        SetOutputText(gHotel.getPoliciesText());
-        break;
+    case 7: SetOutputText(gHotel.getPoliciesText()); break;
     }
+
     if (ok)
         MessageBoxA(gMainWnd, message.c_str(), "Success", MB_OK | MB_ICONINFORMATION);
 }
@@ -579,106 +680,30 @@ void HandleAdminAction()
 
     switch (choice)
     {
-    case 0:
-        SetOutputText(gHotel.getAllGuestsText());
-        break;
-    case 1:
-        SetOutputText(gHotel.getGuestByIdText(ToInt(GetText(gFieldEdits[0]))));
-        SetStatus("Guest search completed.");
-        break;
-    case 2:
-        ok = gHotel.deleteGuestGui(ToInt(GetText(gFieldEdits[0])), message);
-        SetStatus(message);
-        SetOutputText(gHotel.getAllGuestsText());
-        break;
-    case 3:
-        SetOutputText(gHotel.getAllRoomsText());
-        break;
-    case 4:
-        ok = gHotel.addRoomGui("Single", ToInt(GetText(gFieldEdits[0])), ToDouble(GetText(gFieldEdits[1])), message);
-        SetStatus(message);
-        SetOutputText(gHotel.getAllRoomsText());
-        break;
-    case 5:
-        ok = gHotel.addRoomGui("Double", ToInt(GetText(gFieldEdits[0])), ToDouble(GetText(gFieldEdits[1])), message);
-        SetStatus(message);
-        SetOutputText(gHotel.getAllRoomsText());
-        break;
-    case 6:
-        ok = gHotel.addRoomGui("Suite", ToInt(GetText(gFieldEdits[0])), ToDouble(GetText(gFieldEdits[1])), message);
-        SetStatus(message);
-        SetOutputText(gHotel.getAllRoomsText());
-        break;
-    case 7:
-        SetOutputText(gHotel.getAllBookingsText());
-        break;
-    case 8:
-        ok = gHotel.checkInBookingGui(ToInt(GetText(gFieldEdits[0])), message);
-        SetStatus(message);
-        SetOutputText(gHotel.getAllBookingsText());
-        break;
-    case 9:
-        ok = gHotel.checkOutBookingGui(ToInt(GetText(gFieldEdits[0])), message);
-        SetStatus(message);
-        SetOutputText(gHotel.getAllBookingsText());
-        break;
-    case 10:
-        ok = gHotel.cancelBookingGui(ToInt(GetText(gFieldEdits[0])), message);
-        SetStatus(message);
-        SetOutputText(gHotel.getAllBookingsText());
-        break;
-    case 11:
-        SetOutputText(gHotel.getAllBillsText());
-        break;
-    case 12:
-        ok = gHotel.applyDiscountGui(ToInt(GetText(gFieldEdits[0])), ToDouble(GetText(gFieldEdits[1])), message);
-        SetStatus(message);
-        SetOutputText(gHotel.getAllBillsText());
-        break;
-    case 13:
-        SetOutputText(gHotel.getDetailedBillText(ToInt(GetText(gFieldEdits[0]))));
-        SetStatus("Detailed bill loaded.");
-        break;
-    case 14:
-        SetOutputText(gHotel.getRulesText());
-        break;
-    case 15:
-        ok = gHotel.addRuleGui(ToInt(GetText(gFieldEdits[0])), GetText(gFieldEdits[1]), GetText(gFieldEdits[2]), message);
-        SetStatus(message);
-        SetOutputText(gHotel.getRulesText());
-        break;
-    case 16:
-        ok = gHotel.updateRuleGui(ToInt(GetText(gFieldEdits[0])), GetText(gFieldEdits[1]), GetText(gFieldEdits[2]), message);
-        SetStatus(message);
-        SetOutputText(gHotel.getRulesText());
-        break;
-    case 17:
-        SetOutputText(gHotel.getRecordsText());
-        break;
-    case 18:
-        SetOutputText(gHotel.getRecordReportText());
-        break;
-    case 19:
-        ok = gHotel.saveRecordsToFileGui(message);
-        SetStatus(message);
-        SetOutputText(gHotel.getRecordReportText());
-        break;
-    case 20:
-        SetOutputText(gHotel.loadRecordsFromFileGui(message));
-        SetStatus(message);
-        ok = true;
-        break;
-    case 21:
-        SetOutputText(gHotel.getAdminInfoText());
-        break;
-    case 22:
-        ok = gHotel.changeAdminPasswordGui(GetText(gFieldEdits[0]), GetText(gFieldEdits[1]), GetText(gFieldEdits[2]), message);
-        SetStatus(message);
-        SetOutputText(gHotel.getAdminInfoText());
-        break;
-    case 23:
-        SetOutputText(gHotel.getPoliciesText());
-        break;
+    case 0: SetOutputText(gHotel.getAllGuestsText()); break;
+    case 1: SetOutputText(gHotel.getGuestByIdText(ToInt(GetText(gFieldEdits[0])))); SetStatus("Guest search completed."); break;
+    case 2: ok = gHotel.deleteGuestGui(ToInt(GetText(gFieldEdits[0])), message); SetStatus(message); SetOutputText(gHotel.getAllGuestsText()); break;
+    case 3: SetOutputText(gHotel.getAllRoomsText()); break;
+    case 4: ok = gHotel.addRoomGui("Single", ToInt(GetText(gFieldEdits[0])), ToDouble(GetText(gFieldEdits[1])), message); SetStatus(message); SetOutputText(gHotel.getAllRoomsText()); break;
+    case 5: ok = gHotel.addRoomGui("Double", ToInt(GetText(gFieldEdits[0])), ToDouble(GetText(gFieldEdits[1])), message); SetStatus(message); SetOutputText(gHotel.getAllRoomsText()); break;
+    case 6: ok = gHotel.addRoomGui("Suite", ToInt(GetText(gFieldEdits[0])), ToDouble(GetText(gFieldEdits[1])), message); SetStatus(message); SetOutputText(gHotel.getAllRoomsText()); break;
+    case 7: SetOutputText(gHotel.getAllBookingsText()); break;
+    case 8: ok = gHotel.checkInBookingGui(ToInt(GetText(gFieldEdits[0])), message); SetStatus(message); SetOutputText(gHotel.getAllBookingsText()); break;
+    case 9: ok = gHotel.checkOutBookingGui(ToInt(GetText(gFieldEdits[0])), message); SetStatus(message); SetOutputText(gHotel.getAllBookingsText()); break;
+    case 10: ok = gHotel.cancelBookingGui(ToInt(GetText(gFieldEdits[0])), message); SetStatus(message); SetOutputText(gHotel.getAllBookingsText()); break;
+    case 11: SetOutputText(gHotel.getAllBillsText()); break;
+    case 12: ok = gHotel.applyDiscountGui(ToInt(GetText(gFieldEdits[0])), ToDouble(GetText(gFieldEdits[1])), message); SetStatus(message); SetOutputText(gHotel.getAllBillsText()); break;
+    case 13: SetOutputText(gHotel.getDetailedBillText(ToInt(GetText(gFieldEdits[0])))); SetStatus("Detailed bill loaded."); break;
+    case 14: SetOutputText(gHotel.getRulesText()); break;
+    case 15: ok = gHotel.addRuleGui(ToInt(GetText(gFieldEdits[0])), GetText(gFieldEdits[1]), GetText(gFieldEdits[2]), message); SetStatus(message); SetOutputText(gHotel.getRulesText()); break;
+    case 16: ok = gHotel.updateRuleGui(ToInt(GetText(gFieldEdits[0])), GetText(gFieldEdits[1]), GetText(gFieldEdits[2]), message); SetStatus(message); SetOutputText(gHotel.getRulesText()); break;
+    case 17: SetOutputText(gHotel.getRecordsText()); break;
+    case 18: SetOutputText(gHotel.getRecordReportText()); break;
+    case 19: ok = gHotel.saveRecordsToFileGui(message); SetStatus(message); SetOutputText(gHotel.getRecordReportText()); break;
+    case 20: SetOutputText(gHotel.loadRecordsFromFileGui(message)); SetStatus(message); ok = true; break;
+    case 21: SetOutputText(gHotel.getAdminInfoText()); break;
+    case 22: ok = gHotel.changeAdminPasswordGui(GetText(gFieldEdits[0]), GetText(gFieldEdits[1]), GetText(gFieldEdits[2]), message); SetStatus(message); SetOutputText(gHotel.getAdminInfoText()); break;
+    case 23: SetOutputText(gHotel.getPoliciesText()); break;
     }
 
     if (ok)
@@ -714,12 +739,14 @@ void HandleSubmit()
         SetStatus(message);
         if (gGuestIndex >= 0)
         {
+            MessageBoxA(gMainWnd, "Guest login successful.", "Login", MB_OK | MB_ICONINFORMATION);
             gScreen = SCREEN_GUEST_PANEL;
             RenderScreen();
         }
         else
         {
             SetOutputText(message);
+            MessageBoxA(gMainWnd, message.c_str(), "Login Failed", MB_OK | MB_ICONWARNING);
         }
     }
     else if (gScreen == SCREEN_ADMIN_LOGIN)
@@ -728,12 +755,14 @@ void HandleSubmit()
         SetStatus(message);
         if (ok)
         {
+            MessageBoxA(gMainWnd, "Admin login successful.", "Login", MB_OK | MB_ICONINFORMATION);
             gScreen = SCREEN_ADMIN_PANEL;
             RenderScreen();
         }
         else
         {
             SetOutputText(message);
+            MessageBoxA(gMainWnd, message.c_str(), "Login Failed", MB_OK | MB_ICONWARNING);
         }
     }
     else if (gScreen == SCREEN_GUEST_PANEL)
@@ -746,6 +775,18 @@ void HandleSubmit()
     }
 }
 
+void PaintHeader(HWND hwnd)
+{
+    PAINTSTRUCT ps;
+    HDC hdc = BeginPaint(hwnd, &ps);
+    RECT rc;
+    GetClientRect(hwnd, &rc);
+    RECT header = rc;
+    header.bottom = 110;
+    FillRect(hdc, &header, gBrushHeader);
+    EndPaint(hwnd, &ps);
+}
+
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     switch (uMsg)
@@ -755,112 +796,154 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         int id = LOWORD(wParam);
         int code = HIWORD(wParam);
 
-        if (id == ID_BTN_HOME)
-        {
-            GoHome();
-            return 0;
-        }
-        if (id == ID_BTN_BACK)
-        {
-            BackFromForm();
-            return 0;
-        }
-        if (id == ID_BTN_LOGOUT)
-        {
-            LogoutCurrent();
-            return 0;
-        }
-        if (id == ID_BTN_GUEST_REGISTER)
-        {
-            gScreen = SCREEN_GUEST_REGISTER;
-            RenderScreen();
-            return 0;
-        }
-        if (id == ID_BTN_GUEST_LOGIN)
-        {
-            gScreen = SCREEN_GUEST_LOGIN;
-            RenderScreen();
-            return 0;
-        }
-        if (id == ID_BTN_ADMIN_LOGIN)
-        {
-            gScreen = SCREEN_ADMIN_LOGIN;
-            RenderScreen();
-            return 0;
-        }
-        if (id == ID_BTN_SUBMIT)
-        {
-            HandleSubmit();
-            return 0;
-        }
+        if (id == ID_BTN_HOME) { GoHome(); return 0; }
+        if (id == ID_BTN_BACK) { BackFromForm(); return 0; }
+        if (id == ID_BTN_LOGOUT) { LogoutCurrent(); return 0; }
+        if (id == ID_BTN_GUEST_REGISTER) { gScreen = SCREEN_GUEST_REGISTER; RenderScreen(); return 0; }
+        if (id == ID_BTN_GUEST_LOGIN) { gScreen = SCREEN_GUEST_LOGIN; RenderScreen(); return 0; }
+        if (id == ID_BTN_ADMIN_LOGIN) { gScreen = SCREEN_ADMIN_LOGIN; RenderScreen(); return 0; }
+        if (id == ID_BTN_SUBMIT) { HandleSubmit(); return 0; }
         if (id == ID_LIST_MENU && code == LBN_SELCHANGE)
         {
-            if (gScreen == SCREEN_GUEST_PANEL) ShowGuestMenuView();
-            if (gScreen == SCREEN_ADMIN_PANEL) ShowAdminMenuView();
+            if (gScreen == SCREEN_GUEST_PANEL) ConfigureGuestPanel();
+            if (gScreen == SCREEN_ADMIN_PANEL) ConfigureAdminPanel();
             return 0;
         }
         break;
+    }
+    case WM_SIZE:
+        LayoutControls();
+        return 0;
+    case WM_PAINT:
+        PaintHeader(hwnd);
+        return 0;
+    case WM_CTLCOLORSTATIC:
+    {
+        HDC hdc = (HDC)wParam;
+        HWND target = (HWND)lParam;
+        SetBkMode(hdc, TRANSPARENT);
+        if (target == gTitle || target == gSubtitle || target == gStatus)
+        {
+            SetTextColor(hdc, RGB(255, 255, 255));
+            return (LRESULT)gBrushHeader;
+        }
+        SetTextColor(hdc, RGB(38, 44, 52));
+        return (LRESULT)gBrushWindow;
     }
     case WM_DESTROY:
         PostQuitMessage(0);
         return 0;
     }
-
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
+}
+
+void CreateFonts()
+{
+    gFontBase = CreateFontA(-18, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+                            OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
+                            DEFAULT_PITCH | FF_DONTCARE, "Segoe UI");
+    gFontTitle = CreateFontA(-32, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+                             OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
+                             DEFAULT_PITCH | FF_DONTCARE, "Segoe UI Semibold");
+    gFontSubtitle = CreateFontA(-19, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+                                OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
+                                DEFAULT_PITCH | FF_DONTCARE, "Segoe UI");
+    gFontSection = CreateFontA(-18, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+                               OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
+                               DEFAULT_PITCH | FF_DONTCARE, "Segoe UI Semibold");
+    gFontMono = CreateFontA(-17, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+                            OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
+                            FIXED_PITCH | FF_MODERN, "Consolas");
+}
+
+void CreateBrushes()
+{
+    gBrushWindow = CreateSolidBrush(RGB(244, 246, 249));
+    gBrushHeader = CreateSolidBrush(RGB(17, 57, 92));
 }
 
 void CreateControls(HWND hwnd)
 {
-    gFont = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
+    CreateFonts();
 
-    gTitle = CreateWindowA("STATIC", "", WS_CHILD | WS_VISIBLE, 20, 15, 500, 30, hwnd, (HMENU)ID_TITLE_LABEL, NULL, NULL);
-    gStatus = CreateWindowA("STATIC", "", WS_CHILD | WS_VISIBLE, 20, 50, 900, 24, hwnd, (HMENU)ID_STATUS_LABEL, NULL, NULL);
+    gTitle = CreateWindowA("STATIC", "", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, hwnd, (HMENU)ID_TITLE_LABEL, NULL, NULL);
+    gSubtitle = CreateWindowA("STATIC", "", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, hwnd, (HMENU)ID_SUBTITLE_LABEL, NULL, NULL);
+    gStatus = CreateWindowA("STATIC", "", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, hwnd, (HMENU)ID_STATUS_LABEL, NULL, NULL);
 
-    gBtnHome = CreateWindowA("BUTTON", "Home", WS_CHILD | WS_VISIBLE, 730, 15, 80, 28, hwnd, (HMENU)ID_BTN_HOME, NULL, NULL);
-    gBtnBack = CreateWindowA("BUTTON", "Back", WS_CHILD | WS_VISIBLE, 820, 15, 80, 28, hwnd, (HMENU)ID_BTN_BACK, NULL, NULL);
-    gBtnLogout = CreateWindowA("BUTTON", "Logout", WS_CHILD | WS_VISIBLE, 910, 15, 80, 28, hwnd, (HMENU)ID_BTN_LOGOUT, NULL, NULL);
+    gGroupSidebar = CreateWindowA("BUTTON", " Navigation ", WS_CHILD | WS_VISIBLE | BS_GROUPBOX, 0, 0, 0, 0, hwnd, (HMENU)ID_GROUP_SIDEBAR, NULL, NULL);
+    gGroupForm = CreateWindowA("BUTTON", " Form ", WS_CHILD | WS_VISIBLE | BS_GROUPBOX, 0, 0, 0, 0, hwnd, (HMENU)ID_GROUP_FORM, NULL, NULL);
+    gGroupWorkspace = CreateWindowA("BUTTON", " Workspace ", WS_CHILD | WS_VISIBLE | BS_GROUPBOX, 0, 0, 0, 0, hwnd, (HMENU)ID_GROUP_WORKSPACE, NULL, NULL);
+    gGroupHome = CreateWindowA("BUTTON", " Welcome ", WS_CHILD | WS_VISIBLE | BS_GROUPBOX, 0, 0, 0, 0, hwnd, (HMENU)ID_GROUP_HOME, NULL, NULL);
+    gHomeText = CreateWindowA("STATIC", "", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, hwnd, (HMENU)ID_HOME_TEXT, NULL, NULL);
 
-    gBtnGuestRegister = CreateWindowA("BUTTON", "Guest Register", WS_CHILD | WS_VISIBLE, 60, 120, 220, 45, hwnd, (HMENU)ID_BTN_GUEST_REGISTER, NULL, NULL);
-    gBtnGuestLogin = CreateWindowA("BUTTON", "Guest Login", WS_CHILD | WS_VISIBLE, 60, 180, 220, 45, hwnd, (HMENU)ID_BTN_GUEST_LOGIN, NULL, NULL);
-    gBtnAdminLogin = CreateWindowA("BUTTON", "Admin Login", WS_CHILD | WS_VISIBLE, 60, 240, 220, 45, hwnd, (HMENU)ID_BTN_ADMIN_LOGIN, NULL, NULL);
+    gBtnHome = CreateWindowA("BUTTON", "Home", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 0, 0, 0, 0, hwnd, (HMENU)ID_BTN_HOME, NULL, NULL);
+    gBtnBack = CreateWindowA("BUTTON", "Back", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 0, 0, 0, 0, hwnd, (HMENU)ID_BTN_BACK, NULL, NULL);
+    gBtnLogout = CreateWindowA("BUTTON", "Logout", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 0, 0, 0, 0, hwnd, (HMENU)ID_BTN_LOGOUT, NULL, NULL);
+    gBtnGuestRegister = CreateWindowA("BUTTON", "Guest Register", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP, 0, 0, 0, 0, hwnd, (HMENU)ID_BTN_GUEST_REGISTER, NULL, NULL);
+    gBtnGuestLogin = CreateWindowA("BUTTON", "Guest Login", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP, 0, 0, 0, 0, hwnd, (HMENU)ID_BTN_GUEST_LOGIN, NULL, NULL);
+    gBtnAdminLogin = CreateWindowA("BUTTON", "Admin Login", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP, 0, 0, 0, 0, hwnd, (HMENU)ID_BTN_ADMIN_LOGIN, NULL, NULL);
+    gBtnSubmit = CreateWindowA("BUTTON", "Submit", WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON | WS_TABSTOP, 0, 0, 0, 0, hwnd, (HMENU)ID_BTN_SUBMIT, NULL, NULL);
 
-    gMenuList = CreateWindowA("LISTBOX", "", WS_CHILD | WS_BORDER | LBS_NOTIFY | WS_VSCROLL, 20, 90, 240, 560, hwnd, (HMENU)ID_LIST_MENU, NULL, NULL);
-    gBtnSubmit = CreateWindowA("BUTTON", "Submit", WS_CHILD | WS_VISIBLE, 280, 360, 180, 34, hwnd, (HMENU)ID_BTN_SUBMIT, NULL, NULL);
-    gOutput = CreateWindowExA(WS_EX_CLIENTEDGE, "EDIT", "", WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_HSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_AUTOHSCROLL | ES_READONLY, 480, 90, 500, 560, hwnd, (HMENU)ID_EDIT_OUTPUT, NULL, NULL);
+    gMenuList = CreateWindowA("LISTBOX", "", WS_CHILD | WS_VISIBLE | WS_BORDER | WS_VSCROLL | LBS_NOTIFY | WS_TABSTOP, 0, 0, 0, 0, hwnd, (HMENU)ID_LIST_MENU, NULL, NULL);
+    gOutput = CreateWindowExA(WS_EX_CLIENTEDGE, "EDIT", "", WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_HSCROLL |
+                              ES_MULTILINE | ES_AUTOVSCROLL | ES_AUTOHSCROLL | ES_READONLY,
+                              0, 0, 0, 0, hwnd, (HMENU)ID_EDIT_OUTPUT, NULL, NULL);
 
     for (int i = 0; i < 7; i++)
     {
-        int y = 100 + (i * 36);
-        gFieldLabels[i] = CreateWindowA("STATIC", "", WS_CHILD | WS_VISIBLE, 280, y, 180, 22, hwnd, (HMENU)(ID_LABEL_BASE + i), NULL, NULL);
-        gFieldEdits[i] = CreateWindowExA(WS_EX_CLIENTEDGE, "EDIT", "", WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL, 280, y + 18, 180, 24, hwnd, (HMENU)(ID_FIELD_BASE + i), NULL, NULL);
+        gFieldLabels[i] = CreateWindowA("STATIC", "", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, hwnd, (HMENU)(ID_LABEL_BASE + i), NULL, NULL);
+        gFieldEdits[i] = CreateWindowExA(WS_EX_CLIENTEDGE, "EDIT", "", WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL | WS_TABSTOP,
+                                         0, 0, 0, 0, hwnd, (HMENU)(ID_FIELD_BASE + i), NULL, NULL);
     }
 
-    HWND controls[] = { gTitle, gStatus, gBtnHome, gBtnBack, gBtnLogout, gBtnGuestRegister, gBtnGuestLogin, gBtnAdminLogin, gBtnSubmit, gMenuList, gOutput };
-    for (int i = 0; i < (int)(sizeof(controls) / sizeof(controls[0])); i++) ApplyFont(controls[i]);
-    for (int i = 0; i < 7; i++) { ApplyFont(gFieldLabels[i]); ApplyFont(gFieldEdits[i]); }
+    ApplyFont(gTitle, gFontTitle);
+    ApplyFont(gSubtitle, gFontSubtitle);
+    ApplyFont(gStatus, gFontBase);
+    ApplyFont(gGroupSidebar, gFontSection);
+    ApplyFont(gGroupForm, gFontSection);
+    ApplyFont(gGroupWorkspace, gFontSection);
+    ApplyFont(gGroupHome, gFontSection);
+    ApplyFont(gHomeText, gFontSubtitle);
+    ApplyFont(gBtnHome, gFontBase);
+    ApplyFont(gBtnBack, gFontBase);
+    ApplyFont(gBtnLogout, gFontBase);
+    ApplyFont(gBtnGuestRegister, gFontSection);
+    ApplyFont(gBtnGuestLogin, gFontSection);
+    ApplyFont(gBtnAdminLogin, gFontSection);
+    ApplyFont(gBtnSubmit, gFontSection);
+    ApplyFont(gMenuList, gFontBase);
+    ApplyFont(gOutput, gFontMono);
+
+    for (int i = 0; i < 7; i++)
+    {
+        ApplyFont(gFieldLabels[i], gFontBase);
+        ApplyFont(gFieldEdits[i], gFontBase);
+    }
 }
 
 int main()
 {
     HWND console = GetConsoleWindow();
-    if (console != NULL) ShowWindow(console, SW_HIDE);
+    if (console != NULL)
+        ShowWindow(console, SW_HIDE);
+
+    CreateBrushes();
 
     const char* className = "HotelReservationGuiWindow";
-
     WNDCLASSA wc = {};
     wc.lpfnWndProc = WindowProc;
     wc.hInstance = GetModuleHandle(NULL);
     wc.lpszClassName = className;
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+    wc.hbrBackground = gBrushWindow;
 
     RegisterClassA(&wc);
 
     gMainWnd = CreateWindowA(
         className,
         "Hotel Reservation System",
-        WS_OVERLAPPEDWINDOW,
-        CW_USEDEFAULT, CW_USEDEFAULT, 1020, 730,
+        WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
+        CW_USEDEFAULT, CW_USEDEFAULT, 1260, 820,
         NULL, NULL, GetModuleHandle(NULL), NULL
     );
 
@@ -879,8 +962,11 @@ int main()
     MSG msg = {};
     while (GetMessage(&msg, NULL, 0, 0))
     {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
+        if (!IsDialogMessage(gMainWnd, &msg))
+        {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
     }
 
     return 0;
