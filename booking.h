@@ -36,6 +36,8 @@ public:
     string getCheckOutDate() const;
 
     void makeBooking(int gID, int roomNo, string type, double price);
+    bool makeBooking(int gID, int roomNo, string type, double price,
+                     string checkIn, string checkOut, int days, string& message);
     void cancelBooking();
     void checkIn();
     void checkOut();

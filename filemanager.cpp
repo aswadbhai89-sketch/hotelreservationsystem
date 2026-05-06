@@ -73,6 +73,24 @@ void FileManager::loadData()
     fin.close();
 }
 
+string FileManager::loadDataText()
+{
+    ifstream fin(fileName);
+    if (!fin.is_open())
+    {
+        return "Cannot load file.";
+    }
+
+    string line;
+    string output = "----- File Data -----\n";
+    while (getline(fin, line))
+    {
+        output += line + "\n";
+    }
+    fin.close();
+    return output;
+}
+
 void FileManager::writeLine(string text)
 {
     ofstream fout(fileName, ios::app);

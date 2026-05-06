@@ -6,6 +6,7 @@ Rules::Rules(int id, string t, string d) { ruleID = id; title = t; description =
 void Rules::setRuleID(int id) { ruleID = id; }
 int Rules::getRuleID() const { return ruleID; }
 string Rules::getRuleTitle() const { return title; }
+string Rules::getDescription() const { return description; }
 
 bool Rules::addRule()
 {
@@ -58,6 +59,35 @@ bool Rules::updateRule()
     title = newTitle;
     description = newDescription;
     cout << "Rule updated.\n";
+    return true;
+}
+
+bool Rules::addRule(int id, string ruleTitle, string ruleDescription, string& message)
+{
+    if (id <= 0 || ruleTitle.empty() || ruleDescription.empty())
+    {
+        message = "Rule ID, title, and description are required.";
+        return false;
+    }
+
+    ruleID = id;
+    title = ruleTitle;
+    description = ruleDescription;
+    message = "Rule added.";
+    return true;
+}
+
+bool Rules::updateRule(string ruleTitle, string ruleDescription, string& message)
+{
+    if (ruleTitle.empty() || ruleDescription.empty())
+    {
+        message = "Title and description are required.";
+        return false;
+    }
+
+    title = ruleTitle;
+    description = ruleDescription;
+    message = "Rule updated.";
     return true;
 }
 

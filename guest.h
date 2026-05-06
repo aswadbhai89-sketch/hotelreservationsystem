@@ -21,11 +21,14 @@ public:
 
     void setAddress(string address);
     string getAddress() const;
+    void setCredentials(string user, string pass);
 
     string getUsername() const;
 
     bool registerGuest();
+    bool registerGuest(string user, string pass, int id, string fullName, string phoneNo, string cnicNo, string homeAddress, string& message);
     bool updateGuest();
+    bool updateGuest(string newName, string newPhone, string newAddress, string& message);
     void deleteGuest();
     bool loginGuest(string user, string pass);
 

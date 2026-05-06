@@ -26,6 +26,7 @@ int Guest::getGuestID() const { return guestID; }
 
 void Guest::setAddress(string address) { this->address = address; }
 string Guest::getAddress() const { return address; }
+void Guest::setCredentials(string user, string pass) { username = user; password = pass; }
 
 string Guest::getUsername() const { return username; }
 
@@ -142,6 +143,46 @@ bool Guest::updateGuest()
     phone = newPhone;
     address = newAddress;
     cout << "Guest updated.\n";
+    return true;
+}
+
+bool Guest::registerGuest(string user, string pass, int id, string fullName, string phoneNo, string cnicNo, string homeAddress, string& message)
+{
+    if (user.empty() || pass.empty() || fullName.empty() || phoneNo.empty() || cnicNo.empty() || homeAddress.empty())
+    {
+        message = "All fields are required.";
+        return false;
+    }
+    if (id <= 0)
+    {
+        message = "Guest ID must be greater than 0.";
+        return false;
+    }
+
+    username = user;
+    password = pass;
+    guestID = id;
+    personId = id;
+    name = fullName;
+    phone = phoneNo;
+    cnic = cnicNo;
+    address = homeAddress;
+    message = "Registration successful.";
+    return true;
+}
+
+bool Guest::updateGuest(string newName, string newPhone, string newAddress, string& message)
+{
+    if (newName.empty() || newPhone.empty() || newAddress.empty())
+    {
+        message = "Name, phone, and address are required.";
+        return false;
+    }
+
+    name = newName;
+    phone = newPhone;
+    address = newAddress;
+    message = "Guest updated.";
     return true;
 }
 

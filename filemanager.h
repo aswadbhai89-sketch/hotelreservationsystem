@@ -19,6 +19,7 @@ public:
     void closeFile();
     void saveData(string data);
     void loadData();
+    string loadDataText();
     void writeLine(string text);
     void readAll();
     bool fileExists(string fname);

@@ -1,5 +1,15 @@
 #include "HotelSystem.h"
 
+namespace
+{
+    string formatMoney(double value)
+    {
+        ostringstream out;
+        out << value;
+        return out.str();
+    }
+}
+
 void clearScreen()
 {
     #ifdef _WIN32
@@ -762,6 +772,673 @@ void HotelSystem::adminRecordsMenu()
         default: cout << "Invalid.\n"; pauseScreen();
         }
     } while (choice != 0);
+}
+
+bool HotelSystem::registerGuestGui(string user, string pass, int id, string name, string phone, string cnic, string address, string& message)
+{
+    if (guestCount >= 100)
+    {
+        message = "Guest limit reached.";
+        return false;
+    }
+
+    for (int i = 0; i < guestCount; i++)
+    {
+        if (guests[i].getUsername() == user)
+        {
+            message = "Username already exists.";
+            return false;
+        }
+        if (guests[i].getGuestID() == id)
+        {
+            message = "Guest ID already exists.";
+            return false;
+        }
+    }
+
+    if (!guests[guestCount].registerGuest(user, pass, id, name, phone, cnic, address, message))
+        return false;
+
+    guestCount++;
+    saveGuests();
+    records.addRecord("Guest registered: " + name);
+    return true;
+}
+
+int HotelSystem::loginGuestGui(string user, string pass, string& message)
+{
+    for (int i = 0; i < guestCount; i++)
+    {
+        if (guests[i].loginGuest(user, pass))
+        {
+            message = "Guest login successful.";
+            return i;
+        }
+    }
+    message = "Login failed.";
+    return -1;
+}
+
+bool HotelSystem::loginAdminGui(string user, string pass, string& message)
+{
+    if (admin.login(user, pass))
+    {
+        message = "Admin login successful.";
+        return true;
+    }
+    message = "Login failed.";
+    return false;
+}
+
+void HotelSystem::logoutAdminGui()
+{
+    admin.logout();
+    saveAll();
+}
+
+bool HotelSystem::changeAdminPasswordGui(string oldPass, string newPass, string confirmPass, string& message)
+{
+    return admin.changePassword(oldPass, newPass, confirmPass, message);
+}
+
+string HotelSystem::getGuestInfoText(int guestIndex) const
+{
+    if (guestIndex < 0 || guestIndex >= guestCount)
+        return "Guest not found.";
+
+    ostringstream out;
+    out << "----- Guest Info -----\n";
+    out << "Guest ID : " << guests[guestIndex].getGuestID() << "\n";
+    out << "Username : " << guests[guestIndex].getUsername() << "\n";
+    out << "Name     : " << guests[guestIndex].getName() << "\n";
+    out << "Phone    : " << guests[guestIndex].getphone() << "\n";
+    out << "CNIC     : " << guests[guestIndex].getCnic() << "\n";
+    out << "Address  : " << guests[guestIndex].getAddress() << "\n";
+    return out.str();
+}
+
+string HotelSystem::getAvailableRoomsText() const
+{
+    ostringstream out;
+    out << "----- Available Rooms -----\n";
+    bool found = false;
+
+    out << "\nSingle Rooms:\n";
+    for (int i = 0; i < singleCount; i++)
+        if (singleRooms[i].checkAvailability())
+        {
+            out << "Room #" << singleRooms[i].getRoomNumber() << " | Rs." << singleRooms[i].getPricePerNight() << "/night\n";
+            found = true;
+        }
+
+    out << "\nDouble Rooms:\n";
+    for (int i = 0; i < doubleCount; i++)
+        if (doubleRooms[i].checkAvailability())
+        {
+            out << "Room #" << doubleRooms[i].getRoomNumber() << " | Rs." << doubleRooms[i].getPricePerNight() << "/night\n";
+            found = true;
+        }
+
+    out << "\nSuite Rooms:\n";
+    for (int i = 0; i < suiteCount; i++)
+        if (suiteRooms[i].checkAvailability())
+        {
+            out << "Room #" << suiteRooms[i].getRoomNumber() << " | Rs." << suiteRooms[i].getPricePerNight() << "/night\n";
+            found = true;
+        }
+
+    if (!found)
+        out << "No rooms available.\n";
+    return out.str();
+}
+
+string HotelSystem::getGuestBookingsText(int guestIndex) const
+{
+    if (guestIndex < 0 || guestIndex >= guestCount)
+        return "Guest not found.";
+
+    ostringstream out;
+    bool found = false;
+    out << "----- My Bookings -----\n";
+    for (int i = 0; i < bookingCount; i++)
+    {
+        if (bookings[i].getGuestID() == guests[guestIndex].getGuestID())
+        {
+            out << "\nBooking ID : " << bookings[i].getBookingID() << "\n";
+            out << "Room No    : " << bookings[i].getRoomNumber() << "\n";
+            out << "Room Type  : " << bookings[i].getRoomType() << "\n";
+            out << "Price/Night: Rs." << bookings[i].getRoomPrice() << "\n";
+            out << "Check-In   : " << bookings[i].getCheckInDate() << "\n";
+            out << "Check-Out  : " << bookings[i].getCheckOutDate() << "\n";
+            out << "Days       : " << bookings[i].getTotalDays() << "\n";
+            out << "Status     : " << bookings[i].getBookingStatus() << "\n";
+            found = true;
+        }
+    }
+    if (!found)
+        out << "No bookings.\n";
+    return out.str();
+}
+
+string HotelSystem::getGuestBillsText(int guestIndex) const
+{
+    if (guestIndex < 0 || guestIndex >= guestCount)
+        return "Guest not found.";
+
+    ostringstream out;
+    bool found = false;
+    out << "----- My Bills -----\n";
+    for (int i = 0; i < bookingCount; i++)
+    {
+        if (bookings[i].getGuestID() == guests[guestIndex].getGuestID())
+        {
+            for (int j = 0; j < billCount; j++)
+            {
+                if (bills[j].getBillID() == bookings[i].getBookingID())
+                {
+                    out << "\nBill ID        : " << bills[j].getBillID() << "\n";
+                    out << "Room Charges   : Rs." << bills[j].getRoomCharges() << "\n";
+                    out << "Total          : Rs." << bills[j].getTotalAmount() << "\n";
+                    out << "Status         : " << bills[j].getPaymentStatus() << "\n";
+                    found = true;
+                }
+            }
+        }
+    }
+    if (!found)
+        out << "No bills.\n";
+    return out.str();
+}
+
+bool HotelSystem::updateGuestInfoGui(int guestIndex, string name, string phone, string address, string& message)
+{
+    if (guestIndex < 0 || guestIndex >= guestCount)
+    {
+        message = "Guest not found.";
+        return false;
+    }
+    bool ok = guests[guestIndex].updateGuest(name, phone, address, message);
+    if (ok)
+    {
+        saveGuests();
+        records.addRecord("Guest updated info: " + guests[guestIndex].getName());
+    }
+    return ok;
+}
+
+bool HotelSystem::bookRoomGui(int guestIndex, string roomType, int roomNumber, string checkIn, string checkOut, int days, string& message)
+{
+    if (guestIndex < 0 || guestIndex >= guestCount)
+    {
+        message = "Guest not found.";
+        return false;
+    }
+    if (bookingCount >= 100 || billCount >= 100)
+    {
+        message = "Booking or billing limit reached.";
+        return false;
+    }
+
+    Room* targetRoom = 0;
+    string normalized = roomType;
+    for (size_t i = 0; i < normalized.length(); i++)
+        normalized[i] = static_cast<char>(tolower(normalized[i]));
+
+    if (normalized == "single")
+    {
+        for (int i = 0; i < singleCount; i++)
+            if (singleRooms[i].getRoomNumber() == roomNumber && singleRooms[i].checkAvailability())
+                targetRoom = &singleRooms[i];
+        roomType = "Single";
+    }
+    else if (normalized == "double")
+    {
+        for (int i = 0; i < doubleCount; i++)
+            if (doubleRooms[i].getRoomNumber() == roomNumber && doubleRooms[i].checkAvailability())
+                targetRoom = &doubleRooms[i];
+        roomType = "Double";
+    }
+    else if (normalized == "suite")
+    {
+        for (int i = 0; i < suiteCount; i++)
+            if (suiteRooms[i].getRoomNumber() == roomNumber && suiteRooms[i].checkAvailability())
+                targetRoom = &suiteRooms[i];
+        roomType = "Suite";
+    }
+    else
+    {
+        message = "Room type must be Single, Double, or Suite.";
+        return false;
+    }
+
+    if (targetRoom == 0)
+    {
+        message = "Selected room is not available.";
+        return false;
+    }
+
+    if (!bookings[bookingCount].makeBooking(guests[guestIndex].getGuestID(), roomNumber, roomType,
+                                            targetRoom->getPricePerNight(), checkIn, checkOut, days, message))
+        return false;
+
+    targetRoom->setAvailability(false);
+    bills[billCount].generateBill(bookings[bookingCount]);
+    bookingCount++;
+    billCount++;
+    saveAll();
+    records.addRecord("Room booked: " + roomType + " #" + to_string(roomNumber));
+    return true;
+}
+
+bool HotelSystem::payGuestBillGui(int guestIndex, int billId, int method, string& message)
+{
+    if (guestIndex < 0 || guestIndex >= guestCount)
+    {
+        message = "Guest not found.";
+        return false;
+    }
+
+    int guestId = guests[guestIndex].getGuestID();
+    for (int i = 0; i < bookingCount; i++)
+    {
+        if (bookings[i].getGuestID() == guestId && bookings[i].getBookingID() == billId)
+        {
+            for (int j = 0; j < billCount; j++)
+            {
+                if (bills[j].getBillID() == billId)
+                {
+                    bool ok = bills[j].processPayment(method, message);
+                    if (ok)
+                    {
+                        saveBills();
+                        records.addRecord("Bill paid: " + to_string(billId));
+                    }
+                    return ok;
+                }
+            }
+        }
+    }
+    message = "Bill not found.";
+    return false;
+}
+
+string HotelSystem::getPoliciesText() const
+{
+    return "----- Hotel Policies -----\n"
+           "1. Check-In: 2:00 PM\n"
+           "2. Check-Out: 12:00 PM\n"
+           "3. No Smoking\n"
+           "4. No Pets\n"
+           "5. ID Required\n"
+           "6. Payment at Check-In\n"
+           "7. Cancel 24hrs Before\n";
+}
+
+string HotelSystem::getAdminInfoText() const
+{
+    ostringstream out;
+    out << "----- Admin Info -----\n";
+    out << "Admin ID  : " << admin.getAdminID() << "\n";
+    out << "Name      : " << admin.getName() << "\n";
+    out << "Username  : " << admin.getUsername() << "\n";
+    out << "Role      : " << admin.getRole() << "\n";
+    out << "Logged In : " << (admin.getIsLoggedIn() ? "Yes" : "No") << "\n";
+    return out.str();
+}
+
+string HotelSystem::getAllGuestsText() const
+{
+    ostringstream out;
+    out << "----- All Guests -----\n";
+    if (guestCount == 0)
+    {
+        out << "No guests.\n";
+        return out.str();
+    }
+
+    for (int i = 0; i < guestCount; i++)
+    {
+        out << "\nGuest ID : " << guests[i].getGuestID() << "\n";
+        out << "Username : " << guests[i].getUsername() << "\n";
+        out << "Name     : " << guests[i].getName() << "\n";
+        out << "Phone    : " << guests[i].getphone() << "\n";
+        out << "CNIC     : " << guests[i].getCnic() << "\n";
+        out << "Address  : " << guests[i].getAddress() << "\n";
+    }
+    out << "\nTotal: " << guestCount << "\n";
+    return out.str();
+}
+
+string HotelSystem::getGuestByIdText(int guestId) const
+{
+    for (int i = 0; i < guestCount; i++)
+    {
+        if (guests[i].getGuestID() == guestId)
+        {
+            ostringstream out;
+            out << "----- Guest Found -----\n";
+            out << "Guest ID : " << guests[i].getGuestID() << "\n";
+            out << "Username : " << guests[i].getUsername() << "\n";
+            out << "Name     : " << guests[i].getName() << "\n";
+            out << "Phone    : " << guests[i].getphone() << "\n";
+            out << "CNIC     : " << guests[i].getCnic() << "\n";
+            out << "Address  : " << guests[i].getAddress() << "\n";
+            return out.str();
+        }
+    }
+    return "Guest not found.";
+}
+
+bool HotelSystem::deleteGuestGui(int guestId, string& message)
+{
+    for (int i = 0; i < guestCount; i++)
+    {
+        if (guests[i].getGuestID() == guestId)
+        {
+            string guestName = guests[i].getName();
+            for (int j = i; j < guestCount - 1; j++)
+                guests[j] = guests[j + 1];
+            guests[guestCount - 1] = Guest();
+            guestCount--;
+            saveGuests();
+            records.addRecord("Guest deleted: " + guestName);
+            message = "Guest deleted.";
+            return true;
+        }
+    }
+    message = "Guest not found.";
+    return false;
+}
+
+string HotelSystem::getAllRoomsText() const
+{
+    ostringstream out;
+    out << "----- Rooms -----\n";
+    for (int i = 0; i < singleCount; i++)
+        out << "Single  | Room #" << singleRooms[i].getRoomNumber() << " | Rs." << singleRooms[i].getPricePerNight() << " | " << (singleRooms[i].checkAvailability() ? "Available" : "Occupied") << "\n";
+    for (int i = 0; i < doubleCount; i++)
+        out << "Double  | Room #" << doubleRooms[i].getRoomNumber() << " | Rs." << doubleRooms[i].getPricePerNight() << " | " << (doubleRooms[i].checkAvailability() ? "Available" : "Occupied") << "\n";
+    for (int i = 0; i < suiteCount; i++)
+        out << "Suite   | Room #" << suiteRooms[i].getRoomNumber() << " | Rs." << suiteRooms[i].getPricePerNight() << " | " << (suiteRooms[i].checkAvailability() ? "Available" : "Occupied") << "\n";
+    return out.str();
+}
+
+bool HotelSystem::addRoomGui(string roomType, int roomNumber, double price, string& message)
+{
+    if (roomNumber <= 0 || price <= 0)
+    {
+        message = "Room number and price must be valid.";
+        return false;
+    }
+
+    for (int i = 0; i < singleCount; i++) if (singleRooms[i].getRoomNumber() == roomNumber) { message = "Room number already exists."; return false; }
+    for (int i = 0; i < doubleCount; i++) if (doubleRooms[i].getRoomNumber() == roomNumber) { message = "Room number already exists."; return false; }
+    for (int i = 0; i < suiteCount; i++) if (suiteRooms[i].getRoomNumber() == roomNumber) { message = "Room number already exists."; return false; }
+
+    string normalized = roomType;
+    for (size_t i = 0; i < normalized.length(); i++)
+        normalized[i] = static_cast<char>(tolower(normalized[i]));
+
+    if (normalized == "single")
+    {
+        if (singleCount >= 50) { message = "Single room limit reached."; return false; }
+        singleRooms[singleCount++] = SingleRoom(roomNumber, price);
+    }
+    else if (normalized == "double")
+    {
+        if (doubleCount >= 50) { message = "Double room limit reached."; return false; }
+        doubleRooms[doubleCount++] = DoubleRoom(roomNumber, price);
+    }
+    else if (normalized == "suite")
+    {
+        if (suiteCount >= 50) { message = "Suite room limit reached."; return false; }
+        suiteRooms[suiteCount++] = SuiteRoom(roomNumber, price);
+    }
+    else
+    {
+        message = "Room type must be Single, Double, or Suite.";
+        return false;
+    }
+
+    saveRooms();
+    records.addRecord("Room added: " + roomType + " #" + to_string(roomNumber));
+    message = "Room added successfully.";
+    return true;
+}
+
+string HotelSystem::getAllBookingsText() const
+{
+    ostringstream out;
+    out << "----- Bookings -----\n";
+    if (bookingCount == 0)
+    {
+        out << "No bookings.\n";
+        return out.str();
+    }
+    for (int i = 0; i < bookingCount; i++)
+    {
+        out << "\nBooking ID : " << bookings[i].getBookingID() << "\n";
+        out << "Guest ID   : " << bookings[i].getGuestID() << "\n";
+        out << "Room No    : " << bookings[i].getRoomNumber() << "\n";
+        out << "Room Type  : " << bookings[i].getRoomType() << "\n";
+        out << "Check-In   : " << bookings[i].getCheckInDate() << "\n";
+        out << "Check-Out  : " << bookings[i].getCheckOutDate() << "\n";
+        out << "Days       : " << bookings[i].getTotalDays() << "\n";
+        out << "Status     : " << bookings[i].getBookingStatus() << "\n";
+    }
+    return out.str();
+}
+
+bool HotelSystem::checkInBookingGui(int bookingId, string& message)
+{
+    for (int i = 0; i < bookingCount; i++)
+    {
+        if (bookings[i].getBookingID() == bookingId)
+        {
+            bookings[i].checkIn();
+            saveBookings();
+            records.addRecord("Check-in: booking " + to_string(bookingId));
+            message = "Checked in.";
+            return true;
+        }
+    }
+    message = "Booking not found.";
+    return false;
+}
+
+bool HotelSystem::checkOutBookingGui(int bookingId, string& message)
+{
+    for (int i = 0; i < bookingCount; i++)
+    {
+        if (bookings[i].getBookingID() == bookingId)
+        {
+            bookings[i].checkOut();
+            int roomNumber = bookings[i].getRoomNumber();
+            for (int j = 0; j < singleCount; j++) if (singleRooms[j].getRoomNumber() == roomNumber) singleRooms[j].setAvailability(true);
+            for (int j = 0; j < doubleCount; j++) if (doubleRooms[j].getRoomNumber() == roomNumber) doubleRooms[j].setAvailability(true);
+            for (int j = 0; j < suiteCount; j++) if (suiteRooms[j].getRoomNumber() == roomNumber) suiteRooms[j].setAvailability(true);
+            saveAll();
+            records.addRecord("Check-out: booking " + to_string(bookingId));
+            message = "Checked out.";
+            return true;
+        }
+    }
+    message = "Booking not found.";
+    return false;
+}
+
+bool HotelSystem::cancelBookingGui(int bookingId, string& message)
+{
+    for (int i = 0; i < bookingCount; i++)
+    {
+        if (bookings[i].getBookingID() == bookingId)
+        {
+            bookings[i].cancelBooking();
+            int roomNumber = bookings[i].getRoomNumber();
+            for (int j = 0; j < singleCount; j++) if (singleRooms[j].getRoomNumber() == roomNumber) singleRooms[j].setAvailability(true);
+            for (int j = 0; j < doubleCount; j++) if (doubleRooms[j].getRoomNumber() == roomNumber) doubleRooms[j].setAvailability(true);
+            for (int j = 0; j < suiteCount; j++) if (suiteRooms[j].getRoomNumber() == roomNumber) suiteRooms[j].setAvailability(true);
+            saveAll();
+            records.addRecord("Booking cancelled: " + to_string(bookingId));
+            message = "Booking cancelled.";
+            return true;
+        }
+    }
+    message = "Booking not found.";
+    return false;
+}
+
+string HotelSystem::getAllBillsText() const
+{
+    ostringstream out;
+    out << "----- Bills -----\n";
+    if (billCount == 0)
+    {
+        out << "No bills.\n";
+        return out.str();
+    }
+    for (int i = 0; i < billCount; i++)
+    {
+        out << "\nBill ID        : " << bills[i].getBillID() << "\n";
+        out << "Room Charges   : Rs." << bills[i].getRoomCharges() << "\n";
+        out << "Total          : Rs." << bills[i].getTotalAmount() << "\n";
+        out << "Status         : " << bills[i].getPaymentStatus() << "\n";
+    }
+    return out.str();
+}
+
+bool HotelSystem::applyDiscountGui(int billId, double percent, string& message)
+{
+    for (int i = 0; i < billCount; i++)
+    {
+        if (bills[i].getBillID() == billId)
+        {
+            bills[i].applyDiscount(percent);
+            saveBills();
+            records.addRecord("Discount applied to bill: " + to_string(billId));
+            message = "Discount applied.";
+            return true;
+        }
+    }
+    message = "Bill not found.";
+    return false;
+}
+
+string HotelSystem::getDetailedBillText(int bookingId) const
+{
+    ostringstream out;
+    for (int i = 0; i < bookingCount; i++)
+    {
+        if (bookings[i].getBookingID() == bookingId)
+        {
+            for (int j = 0; j < billCount; j++)
+            {
+                if (bills[j].getBillID() == bookingId)
+                {
+                    out << "===== DETAILED BILL =====\n";
+                    out << "Booking ID : " << bookings[i].getBookingID() << "\n";
+                    out << "Guest ID   : " << bookings[i].getGuestID() << "\n";
+                    out << "Room       : " << bookings[i].getRoomType() << " #" << bookings[i].getRoomNumber() << "\n";
+                    out << "Price/Night: Rs." << bookings[i].getRoomPrice() << "\n";
+                    out << "Days       : " << bookings[i].getTotalDays() << "\n";
+                    out << "Room Cost  : Rs." << bills[j].getRoomCharges() << "\n";
+                    out << "Total      : Rs." << bills[j].getTotalAmount() << "\n";
+                    out << "Payment    : " << bills[j].getPaymentStatus() << "\n";
+                    out << "=========================\n";
+                    return out.str();
+                }
+            }
+        }
+    }
+    return "Bill not found.";
+}
+
+string HotelSystem::getRevenueText() const
+{
+    return "Revenue: Rs." + formatMoney(Billing::getTotalRevenue());
+}
+
+string HotelSystem::getRulesText() const
+{
+    ostringstream out;
+    out << "----- Rules -----\n";
+    if (ruleCount == 0)
+    {
+        out << "No rules.\n";
+        return out.str();
+    }
+    for (int i = 0; i < ruleCount; i++)
+    {
+        out << "\nRule ID      : " << rules[i].getRuleID() << "\n";
+        out << "Title        : " << rules[i].getRuleTitle() << "\n";
+        out << "Description  : " << rules[i].getDescription() << "\n";
+    }
+    return out.str();
+}
+
+bool HotelSystem::addRuleGui(int ruleId, string title, string description, string& message)
+{
+    if (ruleCount >= 50)
+    {
+        message = "Rule limit reached.";
+        return false;
+    }
+    for (int i = 0; i < ruleCount; i++)
+    {
+        if (rules[i].getRuleID() == ruleId)
+        {
+            message = "Rule ID already exists.";
+            return false;
+        }
+    }
+    if (!rules[ruleCount].addRule(ruleId, title, description, message))
+        return false;
+    ruleCount++;
+    saveRules();
+    records.addRecord("Rule added: " + title);
+    return true;
+}
+
+bool HotelSystem::updateRuleGui(int ruleId, string title, string description, string& message)
+{
+    for (int i = 0; i < ruleCount; i++)
+    {
+        if (rules[i].getRuleID() == ruleId)
+        {
+            bool ok = rules[i].updateRule(title, description, message);
+            if (ok)
+            {
+                saveRules();
+                records.addRecord("Rule updated: " + title);
+            }
+            return ok;
+        }
+    }
+    message = "Rule not found.";
+    return false;
+}
+
+string HotelSystem::getRecordsText() const
+{
+    return records.getLogsText();
+}
+
+string HotelSystem::getRecordReportText() const
+{
+    return records.getReportText();
+}
+
+bool HotelSystem::saveRecordsToFileGui(string& message)
+{
+    fileMgr.saveData(records.getReportText());
+    message = "Records report saved to file.";
+    return true;
+}
+
+string HotelSystem::loadRecordsFromFileGui(string& message)
+{
+    message = "Records file loaded.";
+    return fileMgr.loadDataText();
 }
 
 HotelSystem::~HotelSystem() {}

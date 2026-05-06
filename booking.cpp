@@ -50,6 +50,29 @@ void Booking::makeBooking(int gID, int roomNo, string type, double price)
     cout << "Total Cost: Rs." << roomPrice * totalDays << endl;
 }
 
+bool Booking::makeBooking(int gID, int roomNo, string type, double price,
+                          string checkIn, string checkOut, int days, string& message)
+{
+    if (gID <= 0 || roomNo <= 0 || type.empty() || price <= 0 || checkIn.empty() || checkOut.empty() || days <= 0)
+    {
+        message = "Please provide valid booking details.";
+        return false;
+    }
+
+    totalBookings++;
+    bookingID = totalBookings;
+    guestID = gID;
+    roomNumber = roomNo;
+    roomType = type;
+    roomPrice = price;
+    checkInDate = checkIn;
+    checkOutDate = checkOut;
+    totalDays = days;
+    bookingStatus = "Confirmed";
+    message = "Booking confirmed. ID: " + to_string(bookingID);
+    return true;
+}
+
 void Booking::cancelBooking() { bookingStatus = "Cancelled"; cout << "Cancelled.\n"; }
 void Booking::checkIn() { bookingStatus = "Checked-In"; cout << "Checked in.\n"; }
 void Booking::checkOut() { bookingStatus = "Checked-Out"; cout << "Checked out.\n"; }

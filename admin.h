@@ -23,6 +23,7 @@ class Admin : public Person {
 		bool login(string user , string pass);
 		void logout();
 		bool changePassword();
+		bool changePassword(string oldPass, string newPass, string confirmPass, string& message);
 		
 		void manageRooms();
 		void manageGuests();

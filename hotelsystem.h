@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <cstdlib>
+#include <sstream>
 #include "Admin.h"
 #include "Guest.h"
 #include "SingleRoom.h"
@@ -69,6 +70,43 @@ public:
     void loadBills();
     void saveRules();
     void loadRules();
+
+    bool registerGuestGui(string user, string pass, int id, string name, string phone, string cnic, string address, string& message);
+    int loginGuestGui(string user, string pass, string& message);
+    bool loginAdminGui(string user, string pass, string& message);
+    void logoutAdminGui();
+    bool changeAdminPasswordGui(string oldPass, string newPass, string confirmPass, string& message);
+
+    string getGuestInfoText(int guestIndex) const;
+    string getAvailableRoomsText() const;
+    string getGuestBookingsText(int guestIndex) const;
+    string getGuestBillsText(int guestIndex) const;
+    bool updateGuestInfoGui(int guestIndex, string name, string phone, string address, string& message);
+    bool bookRoomGui(int guestIndex, string roomType, int roomNumber, string checkIn, string checkOut, int days, string& message);
+    bool payGuestBillGui(int guestIndex, int billId, int method, string& message);
+
+    string getPoliciesText() const;
+    string getAdminInfoText() const;
+    string getAllGuestsText() const;
+    string getGuestByIdText(int guestId) const;
+    bool deleteGuestGui(int guestId, string& message);
+    string getAllRoomsText() const;
+    bool addRoomGui(string roomType, int roomNumber, double price, string& message);
+    string getAllBookingsText() const;
+    bool checkInBookingGui(int bookingId, string& message);
+    bool checkOutBookingGui(int bookingId, string& message);
+    bool cancelBookingGui(int bookingId, string& message);
+    string getAllBillsText() const;
+    bool applyDiscountGui(int billId, double percent, string& message);
+    string getDetailedBillText(int bookingId) const;
+    string getRevenueText() const;
+    string getRulesText() const;
+    bool addRuleGui(int ruleId, string title, string description, string& message);
+    bool updateRuleGui(int ruleId, string title, string description, string& message);
+    string getRecordsText() const;
+    string getRecordReportText() const;
+    bool saveRecordsToFileGui(string& message);
+    string loadRecordsFromFileGui(string& message);
 
     ~HotelSystem();
 };

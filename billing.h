@@ -30,6 +30,7 @@ public:
     void generateBill(Booking& b);
     void calculateTotal();
     bool processPayment();
+    bool processPayment(int method, string& message);
     void displayBill() const;
     void applyDiscount(double percent);
 

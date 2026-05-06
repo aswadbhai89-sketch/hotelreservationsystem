@@ -17,6 +17,9 @@ public:
     void addRecord(string text);
     void viewRecords();
     void generateReport();
+    vector<string> getLogs() const;
+    string getLogsText() const;
+    string getReportText() const;
 
     ~Records();
 };

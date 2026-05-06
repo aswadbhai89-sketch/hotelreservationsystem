@@ -94,6 +94,28 @@ bool Admin::changePassword(){
 	}
 }
 
+bool Admin::changePassword(string oldPass, string newPass, string confirmPass, string& message){
+	if(!isLoggedIn){
+		message = "Please login first.";
+		return false;
+	}
+	if(oldPass != password){
+		message = "Wrong old password.";
+		return false;
+	}
+	if(newPass.empty()){
+		message = "New password cannot be empty.";
+		return false;
+	}
+	if(newPass != confirmPass){
+		message = "Passwords do not match.";
+		return false;
+	}
+	password = newPass;
+	message = "Password changed successfully.";
+	return true;
+}
+
 void Admin::manageRooms(){
 	if(!isLoggedIn){
 		cout<<"Please login first. \n";

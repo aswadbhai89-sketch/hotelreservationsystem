@@ -58,6 +58,30 @@ bool Billing::processPayment()
     return true;
 }
 
+bool Billing::processPayment(int method, string& message)
+{
+    if (totalAmount <= 0)
+    {
+        message = "No bill.";
+        return false;
+    }
+    if (paymentStatus == "Paid")
+    {
+        message = "Already paid.";
+        return false;
+    }
+    if (method < 1 || method > 3)
+    {
+        message = "Invalid payment method.";
+        return false;
+    }
+
+    paymentStatus = "Paid";
+    totalRevenue += totalAmount;
+    message = "Payment successful.";
+    return true;
+}
+
 void Billing::displayBill() const
 {
     cout << "\n----- Bill -----" << endl;
