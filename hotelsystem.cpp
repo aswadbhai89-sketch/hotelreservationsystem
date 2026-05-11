@@ -1,4 +1,5 @@
 #include "HotelSystem.h"
+#include <ctime>
 
 namespace
 {
@@ -18,8 +19,42 @@ namespace
     {
         out << "----------------------------------------\n";
     }
+
+    tm getLocalTime(time_t rawTime)
+    {
+        tm localTime;
+        #ifdef _WIN32
+            localtime_s(&localTime, &rawTime);
+        #else
+            localtime_r(&rawTime, &localTime);
+        #endif
+        return localTime;
+    }
+
+    string formatDate(const tm& date)
+    {
+        char buffer[11] = {0};
+        strftime(buffer, sizeof(buffer), "%d/%m/%Y", &date);
+        return buffer;
+    }
+
+    string todayDate()
+    {
+        time_t now = time(0);
+        return formatDate(getLocalTime(now));
+    }
+
+    string futureDate(int daysFromNow)
+    {
+        time_t now = time(0);
+        const time_t secondsPerDay = 24 * 60 * 60;
+        time_t future = now + static_cast<time_t>(daysFromNow) * secondsPerDay;
+        return formatDate(getLocalTime(future));
+    }
 }
 
+/*
+Legacy console helpers kept for reference.
 void clearScreen()
 {
     #ifdef _WIN32
@@ -35,6 +70,7 @@ void pauseScreen()
     cin.ignore();
     cin.get();
 }
+*/
 
 HotelSystem::HotelSystem()
     : admin(1, "Manager", "admin", "1234", "Admin"),
@@ -215,6 +251,16 @@ void HotelSystem::loadRules()
     f.close();
 }
 
+int HotelSystem::getNextGuestId() const
+{
+    int nextId = 1;
+    for (int i = 0; i < guestCount; i++)
+        if (guests[i].getGuestID() >= nextId)
+            nextId = guests[i].getGuestID() + 1;
+    return nextId;
+}
+
+/*
 void HotelSystem::start()
 {
     int choice;
@@ -271,518 +317,55 @@ void HotelSystem::guestLogin()
 
 void HotelSystem::guestMenu(int gi)
 {
-    int choice;
-    do
-    {
-        clearScreen();
-        cout << "\n----- Welcome, " << guests[gi].getName() << " -----" << endl;
-        cout << "  1. View My Info" << endl;
-        cout << "  2. View Available Rooms" << endl;
-        cout << "  3. Book a Room" << endl;
-        cout << "  4. View My Bookings" << endl;
-        cout << "  5. View My Bills" << endl;
-        cout << "  6. Pay Bill" << endl;
-        cout << "  7. Update My Info" << endl;
-        cout << "  8. Hotel Policies" << endl;
-        cout << "  0. Logout" << endl;
-        cout << "  Choice: ";
-        cin >> choice;
-
-        switch (choice)
-        {
-        case 1: clearScreen(); guests[gi].displayInfo(); pauseScreen(); break;
-
-        case 2:
-        {
-            clearScreen();
-            Room* budgetRoom = 0;
-            cout << "\nSingle Rooms:" << endl;
-            for (int i = 0; i < singleCount; i++)
-                if (singleRooms[i].checkAvailability())
-                {
-                    singleRooms[i].displayRoomInfo();
-                    if (budgetRoom == 0 || singleRooms[i] < *budgetRoom)
-                        budgetRoom = &singleRooms[i];
-                }
-            cout << "\nDouble Rooms:" << endl;
-            for (int i = 0; i < doubleCount; i++)
-                if (doubleRooms[i].checkAvailability())
-                {
-                    doubleRooms[i].displayRoomInfo();
-                    if (budgetRoom == 0 || doubleRooms[i] < *budgetRoom)
-                        budgetRoom = &doubleRooms[i];
-                }
-            cout << "\nSuite Rooms:" << endl;
-            for (int i = 0; i < suiteCount; i++)
-                if (suiteRooms[i].checkAvailability())
-                {
-                    suiteRooms[i].displayRoomInfo();
-                    if (budgetRoom == 0 || suiteRooms[i] < *budgetRoom)
-                        budgetRoom = &suiteRooms[i];
-                }
-
-            if (budgetRoom != 0)
-                cout << "\nBudget: " << budgetRoom->getRoomType()
-                     << " from Rs." << budgetRoom->getPricePerNight()
-                     << "/night" << endl;
-            pauseScreen(); break;
-        }
-
-        case 3:
-        {
-            clearScreen();
-            int rc = selectRoom();
-            if (rc == 0) { cout << "Booking cancelled.\n"; pauseScreen(); break; }
-            if (rc == -1) { cout << "Invalid.\n"; pauseScreen(); break; }
-
-            int roomNo = -1; string roomType = ""; double roomPrice = 0; bool found = false;
-
-            if (rc == 1) {
-                int idx; cout << "Room Number (0 to cancel): "; cin >> idx;
-                if (idx == 0) { cout << "Booking cancelled.\n"; pauseScreen(); break; }
-                for (int i = 0; i < singleCount; i++)
-                    if (singleRooms[i].getRoomNumber() == idx && singleRooms[i].checkAvailability())
-                    { roomNo = idx; roomType = "Single"; roomPrice = singleRooms[i].getPricePerNight(); singleRooms[i].setAvailability(false); found = true; break; }
-            } else if (rc == 2) {
-                int idx; cout << "Room Number (0 to cancel): "; cin >> idx;
-                if (idx == 0) { cout << "Booking cancelled.\n"; pauseScreen(); break; }
-                for (int i = 0; i < doubleCount; i++)
-                    if (doubleRooms[i].getRoomNumber() == idx && doubleRooms[i].checkAvailability())
-                    { roomNo = idx; roomType = "Double"; roomPrice = doubleRooms[i].getPricePerNight(); doubleRooms[i].setAvailability(false); found = true; break; }
-            } else if (rc == 3) {
-                int idx; cout << "Room Number (0 to cancel): "; cin >> idx;
-                if (idx == 0) { cout << "Booking cancelled.\n"; pauseScreen(); break; }
-                for (int i = 0; i < suiteCount; i++)
-                    if (suiteRooms[i].getRoomNumber() == idx && suiteRooms[i].checkAvailability())
-                    { roomNo = idx; roomType = "Suite"; roomPrice = suiteRooms[i].getPricePerNight(); suiteRooms[i].setAvailability(false); found = true; break; }
-            }
-
-            if (!found) { cout << "Not available.\n"; pauseScreen(); break; }
-
-            bookings[bookingCount].makeBooking(guests[gi].getGuestID(), roomNo, roomType, roomPrice);
-            bills[billCount].generateBill(bookings[bookingCount]);
-            bookingCount++; billCount++;
-            saveAll();
-            records.addRecord("Room booked.");
-            pauseScreen(); break;
-        }
-
-        case 4:
-        {
-            clearScreen(); bool f = false;
-            for (int i = 0; i < bookingCount; i++)
-                if (bookings[i].getGuestID() == guests[gi].getGuestID())
-                { bookings[i].displayBooking(); f = true; }
-            if (!f) cout << "No bookings.\n";
-            pauseScreen(); break;
-        }
-
-        case 5:
-        {
-            clearScreen(); bool f = false;
-            for (int i = 0; i < bookingCount; i++)
-                if (bookings[i].getGuestID() == guests[gi].getGuestID())
-                    for (int j = 0; j < billCount; j++)
-                        if (bills[j].getBillID() == bookings[i].getBookingID())
-                        { bills[j].displayBill(); f = true; }
-            if (!f) cout << "No bills.\n";
-            pauseScreen(); break;
-        }
-
-        case 6:
-        {
-            clearScreen(); bool f = false; int gID = guests[gi].getGuestID();
-            for (int i = 0; i < bookingCount; i++)
-                if (bookings[i].getGuestID() == gID)
-                    for (int j = 0; j < billCount; j++)
-                        if (bills[j].getBillID() == bookings[i].getBookingID())
-                            bills[j].displayBill();
-
-            int bid; cout << "\nBill ID to Pay (0 to cancel): "; cin >> bid;
-            if (bid == 0) { cout << "Payment cancelled.\n"; pauseScreen(); break; }
-            for (int i = 0; i < billCount; i++)
-                if (bills[i].getBillID() == bid)
-                    for (int j = 0; j < bookingCount; j++)
-                        if (bookings[j].getBookingID() == bid && bookings[j].getGuestID() == gID)
-                        { if (bills[i].processPayment()) saveBills(); f = true; }
-            if (!f) cout << "Bill not found.\n";
-            pauseScreen(); break;
-        }
-
-        case 7:
-            clearScreen();
-            if (guests[gi].updateGuest()) saveGuests();
-            pauseScreen();
-            break;
-        case 8: { clearScreen(); Rules t; t.displayHotelPolicies(); pauseScreen(); break; }
-        case 0: cout << "Logged out.\n"; break;
-        default: cout << "Invalid.\n"; pauseScreen();
-        }
-    } while (choice != 0);
+    // Console guest menu omitted.
 }
 
 int HotelSystem::selectRoom()
 {
-    cout << "\n----- Select Room Type -----" << endl;
-    cout << "  1. Single Room" << endl;
-    cout << "  2. Double Room" << endl;
-    cout << "  3. Suite Room" << endl;
-    cout << "  0. Back" << endl;
-    cout << "  Choice: ";
-    int c;
-    cin >> c;
-
-    if (c == 0) return 0;
-
-    if (c == 1)
-    {
-        cout << "\n--- Available Single Rooms ---" << endl;
-        bool any = false;
-        for (int i = 0; i < singleCount; i++)
-        {
-            if (singleRooms[i].checkAvailability())
-            {
-                cout << "  Room #" << singleRooms[i].getRoomNumber()
-                     << "  |  Rs." << singleRooms[i].getPricePerNight()
-                     << "/night" << endl;
-                any = true;
-            }
-        }
-        if (!any) { cout << "  No single rooms available.\n"; return -1; }
-        return 1;
-    }
-    else if (c == 2)
-    {
-        cout << "\n--- Available Double Rooms ---" << endl;
-        bool any = false;
-        for (int i = 0; i < doubleCount; i++)
-        {
-            if (doubleRooms[i].checkAvailability())
-            {
-                cout << "  Room #" << doubleRooms[i].getRoomNumber()
-                     << "  |  Rs." << doubleRooms[i].getPricePerNight()
-                     << "/night" << endl;
-                any = true;
-            }
-        }
-        if (!any) { cout << "  No double rooms available.\n"; return -1; }
-        return 2;
-    }
-    else if (c == 3)
-    {
-        cout << "\n--- Available Suite Rooms ---" << endl;
-        bool any = false;
-        for (int i = 0; i < suiteCount; i++)
-        {
-            if (suiteRooms[i].checkAvailability())
-            {
-                cout << "  Room #" << suiteRooms[i].getRoomNumber()
-                     << "  |  Rs." << suiteRooms[i].getPricePerNight()
-                     << "/night" << endl;
-                any = true;
-            }
-        }
-        if (!any) { cout << "  No suite rooms available.\n"; return -1; }
-        return 3;
-    }
-
+    // Console room selection omitted.
     return -1;
 }
 
 void HotelSystem::adminLogin()
 {
-    string u, p;
-    cout << "\n----- Admin Login -----" << endl;
-    cout << "Username: "; cin >> u;
-    cout << "Password: "; cin >> p;
-    if (admin.login(u, p)) { pauseScreen(); adminMenu(); }
-    else pauseScreen();
+    // Console admin login omitted.
 }
 
 void HotelSystem::adminMenu()
 {
-    int choice;
-    do
-    {
-        clearScreen();
-        cout << "\n----- Admin Menu -----" << endl;
-        cout << "  1. Guest Management" << endl;
-        cout << "  2. Room Management" << endl;
-        cout << "  3. Booking Management" << endl;
-        cout << "  4. Billing" << endl;
-        cout << "  5. Rules" << endl;
-        cout << "  6. Records" << endl;
-        cout << "  7. Admin Info" << endl;
-        cout << "  8. Change Password" << endl;
-        cout << "  0. Logout" << endl;
-        cout << "  Choice: ";
-        cin >> choice;
-
-        switch (choice)
-        {
-        case 1: adminGuestMenu(); break;
-        case 2: adminRoomMenu(); break;
-        case 3: adminBookingMenu(); break;
-        case 4: adminBillingMenu(); break;
-        case 5: adminRulesMenu(); break;
-        case 6: adminRecordsMenu(); break;
-        case 7: clearScreen(); admin.displayInfo(); pauseScreen(); break;
-        case 8: clearScreen(); admin.changePassword(); pauseScreen(); break;
-        case 0: admin.logout(); saveAll(); break;
-        default: cout << "Invalid.\n"; pauseScreen();
-        }
-    } while (choice != 0);
+    // Console admin menu omitted.
 }
 
 void HotelSystem::adminGuestMenu()
 {
-    int choice;
-    do
-    {
-        clearScreen();
-        cout << "\n--- Guests ---" << endl;
-        cout << "  1. View All" << endl;
-        cout << "  2. Search" << endl;
-        cout << "  3. Delete" << endl;
-        cout << "  0. Back" << endl;
-        cout << "  Choice: ";
-        cin >> choice;
-
-        switch (choice)
-        {
-        case 1:
-            clearScreen();
-            if (guestCount == 0) cout << "No guests.\n";
-            else { Person* p; for (int i = 0; i < guestCount; i++) { p = &guests[i]; p->displayInfo(); }
-                   cout << "\nTotal: " << Guest::getTotalGuests() << endl; }
-            pauseScreen(); break;
-        case 2:
-        { clearScreen(); int id; bool f = false; cout << "Guest ID: "; cin >> id;
-          for (int i = 0; i < guestCount; i++)
-              if (guests[i].getGuestID() == id) { guests[i].displayInfo(); f = true; }
-          if (!f) cout << "Not found.\n"; pauseScreen(); break; }
-        case 3:
-        { clearScreen(); int id; bool f = false; cout << "Guest ID: "; cin >> id;
-          for (int i = 0; i < guestCount; i++)
-              if (guests[i].getGuestID() == id) { guests[i].deleteGuest(); saveGuests(); f = true; }
-          if (!f) cout << "Not found.\n"; pauseScreen(); break; }
-        case 0: break;
-        default: cout << "Invalid.\n"; pauseScreen();
-        }
-    } while (choice != 0);
+    // Console admin guest menu omitted.
 }
 
 void HotelSystem::adminRoomMenu()
 {
-    int choice;
-    do
-    {
-        clearScreen();
-        cout << "\n--- Rooms ---" << endl;
-        cout << "  1. View All" << endl;
-        cout << "  2. Add Single" << endl;
-        cout << "  3. Add Double" << endl;
-        cout << "  4. Add Suite" << endl;
-        cout << "  0. Back" << endl;
-        cout << "  Choice: ";
-        cin >> choice;
-
-        switch (choice)
-        {
-        case 1:
-        { clearScreen(); Room* r;
-          for (int i = 0; i < singleCount; i++) { r = &singleRooms[i]; r->displayRoomInfo(); }
-          for (int i = 0; i < doubleCount; i++) { r = &doubleRooms[i]; r->displayRoomInfo(); }
-          for (int i = 0; i < suiteCount; i++) { r = &suiteRooms[i]; r->displayRoomInfo(); }
-          cout << "\nTotal: " << Room::getTotalRooms() << endl;
-          pauseScreen(); break; }
-        case 2:
-        { int n; double p; cout << "No (0 to cancel): "; cin >> n; if (n == 0) { cout << "Add cancelled.\n"; pauseScreen(); break; } cout << "Price: "; cin >> p;
-          singleRooms[singleCount++] = SingleRoom(n, p); saveRooms(); cout << "Added.\n"; pauseScreen(); break; }
-        case 3:
-        { int n; double p; cout << "No (0 to cancel): "; cin >> n; if (n == 0) { cout << "Add cancelled.\n"; pauseScreen(); break; } cout << "Price: "; cin >> p;
-          doubleRooms[doubleCount++] = DoubleRoom(n, p); saveRooms(); cout << "Added.\n"; pauseScreen(); break; }
-        case 4:
-        { int n; double p; cout << "No (0 to cancel): "; cin >> n; if (n == 0) { cout << "Add cancelled.\n"; pauseScreen(); break; } cout << "Price: "; cin >> p;
-          suiteRooms[suiteCount++] = SuiteRoom(n, p); saveRooms(); cout << "Added.\n"; pauseScreen(); break; }
-        case 0: break;
-        default: cout << "Invalid.\n"; pauseScreen();
-        }
-    } while (choice != 0);
+    // Console admin room menu omitted.
 }
 
 void HotelSystem::adminBookingMenu()
 {
-    int choice;
-    do
-    {
-        clearScreen();
-        cout << "\n--- Bookings ---" << endl;
-        cout << "  1. View All" << endl;
-        cout << "  2. Check In" << endl;
-        cout << "  3. Check Out" << endl;
-        cout << "  4. Cancel" << endl;
-        cout << "  0. Back" << endl;
-        cout << "  Choice: ";
-        cin >> choice;
-
-        switch (choice)
-        {
-        case 1:
-            clearScreen();
-            if (bookingCount == 0) cout << "No bookings.\n";
-            else for (int i = 0; i < bookingCount; i++) bookings[i].displayBooking();
-            pauseScreen(); break;
-        case 2:
-        { int id; bool f = false; cout << "Booking ID (0 to cancel): "; cin >> id;
-          if (id == 0) { cout << "Check-in cancelled.\n"; pauseScreen(); break; }
-          for (int i = 0; i < bookingCount; i++)
-              if (bookings[i].getBookingID() == id) { bookings[i].checkIn(); saveBookings(); f = true; }
-          if (!f) cout << "Not found.\n"; pauseScreen(); break; }
-        case 3:
-        { int id; bool f = false; cout << "Booking ID (0 to cancel): "; cin >> id;
-          if (id == 0) { cout << "Check-out cancelled.\n"; pauseScreen(); break; }
-          for (int i = 0; i < bookingCount; i++)
-              if (bookings[i].getBookingID() == id)
-              { bookings[i].checkOut(); int rn = bookings[i].getRoomNumber();
-                for (int j = 0; j < singleCount; j++) if (singleRooms[j].getRoomNumber() == rn) singleRooms[j].setAvailability(true);
-                for (int j = 0; j < doubleCount; j++) if (doubleRooms[j].getRoomNumber() == rn) doubleRooms[j].setAvailability(true);
-                for (int j = 0; j < suiteCount; j++) if (suiteRooms[j].getRoomNumber() == rn) suiteRooms[j].setAvailability(true);
-                saveAll(); f = true; }
-          if (!f) cout << "Not found.\n"; pauseScreen(); break; }
-        case 4:
-        { int id; bool f = false; cout << "Booking ID (0 to cancel): "; cin >> id;
-          if (id == 0) { cout << "Cancel booking aborted.\n"; pauseScreen(); break; }
-          for (int i = 0; i < bookingCount; i++)
-              if (bookings[i].getBookingID() == id)
-              { bookings[i].cancelBooking(); int rn = bookings[i].getRoomNumber();
-                for (int j = 0; j < singleCount; j++) if (singleRooms[j].getRoomNumber() == rn) singleRooms[j].setAvailability(true);
-                for (int j = 0; j < doubleCount; j++) if (doubleRooms[j].getRoomNumber() == rn) doubleRooms[j].setAvailability(true);
-                for (int j = 0; j < suiteCount; j++) if (suiteRooms[j].getRoomNumber() == rn) suiteRooms[j].setAvailability(true);
-                saveAll(); f = true; }
-          if (!f) cout << "Not found.\n"; pauseScreen(); break; }
-        case 0: break;
-        default: cout << "Invalid.\n"; pauseScreen();
-        }
-    } while (choice != 0);
+    // Console admin booking menu omitted.
 }
 
 void HotelSystem::adminBillingMenu()
 {
-    int choice;
-    do
-    {
-        clearScreen();
-        cout << "\n--- Billing ---" << endl;
-        cout << "  1. View All Bills" << endl;
-        cout << "  2. Apply Discount" << endl;
-        cout << "  3. Detailed Bill" << endl;
-        cout << "  4. Total Revenue" << endl;
-        cout << "  0. Back" << endl;
-        cout << "  Choice: ";
-        cin >> choice;
-
-        switch (choice)
-        {
-        case 1:
-            clearScreen();
-            if (billCount == 0) cout << "No bills.\n";
-            else for (int i = 0; i < billCount; i++) bills[i].displayBill();
-            pauseScreen(); break;
-        case 2:
-        { int id; double p; bool f = false; cout << "Bill ID (0 to cancel): "; cin >> id;
-          if (id == 0) { cout << "Discount cancelled.\n"; pauseScreen(); break; }
-          for (int i = 0; i < billCount; i++)
-              if (bills[i].getBillID() == id)
-              { cout << "Discount %: "; cin >> p; bills[i].applyDiscount(p); saveBills(); f = true; }
-          if (!f) cout << "Not found.\n"; pauseScreen(); break; }
-        case 3:
-        { clearScreen(); int id; bool f = false; cout << "Booking ID (0 to cancel): "; cin >> id;
-          if (id == 0) { cout << "Detailed bill cancelled.\n"; pauseScreen(); break; }
-          for (int i = 0; i < bookingCount; i++)
-              if (bookings[i].getBookingID() == id)
-                  for (int j = 0; j < billCount; j++)
-                      if (bills[j].getBillID() == id)
-                      { generateFinalBill(bookings[i], bills[j]); f = true; }
-          if (!f) cout << "Not found.\n"; pauseScreen(); break; }
-        case 4:
-            cout << "Revenue: Rs." << Billing::getTotalRevenue() << endl;
-            pauseScreen(); break;
-        case 0: break;
-        default: cout << "Invalid.\n"; pauseScreen();
-        }
-    } while (choice != 0);
+    // Console admin billing menu omitted.
 }
 
 void HotelSystem::adminRulesMenu()
 {
-    int choice;
-    do
-    {
-        clearScreen();
-        cout << "\n--- Rules ---" << endl;
-        cout << "  1. Add Rule" << endl;
-        cout << "  2. View Rules" << endl;
-        cout << "  3. Update Rule" << endl;
-        cout << "  4. Hotel Policies" << endl;
-        cout << "  0. Back" << endl;
-        cout << "  Choice: ";
-        cin >> choice;
-
-        switch (choice)
-        {
-        case 1:
-            if (rules[ruleCount].addRule())
-            {
-                ruleCount++;
-                saveRules();
-            }
-            pauseScreen();
-            break;
-        case 2:
-            clearScreen();
-            if (ruleCount == 0) cout << "No rules.\n";
-            else for (int i = 0; i < ruleCount; i++) rules[i].displayRule();
-            pauseScreen(); break;
-        case 3:
-        { int id; bool f = false; cout << "Rule ID (0 to cancel): "; cin >> id;
-          if (id == 0) { cout << "Rule update cancelled.\n"; pauseScreen(); break; }
-          for (int i = 0; i < ruleCount; i++)
-              if (rules[i].getRuleID() == id) { if (rules[i].updateRule()) saveRules(); f = true; }
-          if (!f) cout << "Not found.\n"; pauseScreen(); break; }
-        case 4: { clearScreen(); Rules t; t.displayHotelPolicies(); pauseScreen(); break; }
-        case 0: break;
-        default: cout << "Invalid.\n"; pauseScreen();
-        }
-    } while (choice != 0);
+    // Console admin rules menu omitted.
 }
 
 void HotelSystem::adminRecordsMenu()
 {
-    int choice;
-    do
-    {
-        clearScreen();
-        cout << "\n--- Records ---" << endl;
-        cout << "  1. View Records" << endl;
-        cout << "  2. Generate Report" << endl;
-        cout << "  3. Save to File" << endl;
-        cout << "  4. Load from File" << endl;
-        cout << "  0. Back" << endl;
-        cout << "  Choice: ";
-        cin >> choice;
-
-        switch (choice)
-        {
-        case 1: clearScreen(); records.viewRecords(); pauseScreen(); break;
-        case 2: clearScreen(); records.generateReport(); pauseScreen(); break;
-        case 3: fileMgr.saveData("Records saved."); pauseScreen(); break;
-        case 4: clearScreen(); fileMgr.loadData(); pauseScreen(); break;
-        case 0: break;
-        default: cout << "Invalid.\n"; pauseScreen();
-        }
-    } while (choice != 0);
+    // Console admin records menu omitted.
 }
+*/
 
 bool HotelSystem::registerGuestGui(string user, string pass, int id, string name, string phone, string cnic, string address, string& message)
 {
@@ -813,6 +396,15 @@ bool HotelSystem::registerGuestGui(string user, string pass, int id, string name
     saveGuests();
     records.addRecord("Guest registered: " + name);
     return true;
+}
+
+bool HotelSystem::registerGuestGui(string user, string pass, string name, string phone, string cnic, string address, string& message)
+{
+    int guestId = getNextGuestId();
+    bool ok = registerGuestGui(user, pass, guestId, name, phone, cnic, address, message);
+    if (ok)
+        message = "Registration successful. Guest ID: " + to_string(guestId);
+    return ok;
 }
 
 int HotelSystem::loginGuestGui(string user, string pass, string& message)
@@ -868,12 +460,32 @@ string HotelSystem::getGuestInfoText(int guestIndex) const
     return out.str();
 }
 
+bool HotelSystem::getGuestProfileValues(int guestIndex, string& name, string& phone, string& address) const
+{
+    if (guestIndex < 0 || guestIndex >= guestCount)
+        return false;
+
+    name = guests[guestIndex].getName();
+    phone = guests[guestIndex].getphone();
+    address = guests[guestIndex].getAddress();
+    return true;
+}
+
+vector<int> HotelSystem::getGuestIds() const
+{
+    vector<int> ids;
+    for (int i = 0; i < guestCount; i++)
+        ids.push_back(guests[i].getGuestID());
+    return ids;
+}
+
 string HotelSystem::getAvailableRoomsText() const
 {
     ostringstream out;
     out << "AVAILABLE ROOMS\n";
     appendDivider(out);
     bool found = false;
+    const Room* budgetRoom = 0;
 
     out << "\n[SINGLE ROOMS]\n";
     for (int i = 0; i < singleCount; i++)
@@ -882,6 +494,8 @@ string HotelSystem::getAvailableRoomsText() const
             out << "Room #" << singleRooms[i].getRoomNumber()
                 << "  |  Rate: Rs." << singleRooms[i].getPricePerNight() << "/night\n";
             found = true;
+            if (budgetRoom == 0 || singleRooms[i].getPricePerNight() < budgetRoom->getPricePerNight())
+                budgetRoom = &singleRooms[i];
         }
 
     out << "\n[DOUBLE ROOMS]\n";
@@ -891,6 +505,8 @@ string HotelSystem::getAvailableRoomsText() const
             out << "Room #" << doubleRooms[i].getRoomNumber()
                 << "  |  Rate: Rs." << doubleRooms[i].getPricePerNight() << "/night\n";
             found = true;
+            if (budgetRoom == 0 || doubleRooms[i].getPricePerNight() < budgetRoom->getPricePerNight())
+                budgetRoom = &doubleRooms[i];
         }
 
     out << "\n[SUITE ROOMS]\n";
@@ -900,11 +516,46 @@ string HotelSystem::getAvailableRoomsText() const
             out << "Room #" << suiteRooms[i].getRoomNumber()
                 << "  |  Rate: Rs." << suiteRooms[i].getPricePerNight() << "/night\n";
             found = true;
+            if (budgetRoom == 0 || suiteRooms[i].getPricePerNight() < budgetRoom->getPricePerNight())
+                budgetRoom = &suiteRooms[i];
         }
 
     if (!found)
         out << "No rooms available.\n";
+    else if (budgetRoom != 0)
+        out << "\nBudget: " << budgetRoom->getRoomType()
+            << " from Rs." << budgetRoom->getPricePerNight() << "/night\n";
+
     return out.str();
+}
+
+vector<int> HotelSystem::getAvailableRoomNumbers(string roomType) const
+{
+    vector<int> roomNumbers;
+    string normalized = roomType;
+    for (size_t i = 0; i < normalized.length(); i++)
+        normalized[i] = static_cast<char>(tolower(normalized[i]));
+
+    if (normalized == "single")
+    {
+        for (int i = 0; i < singleCount; i++)
+            if (singleRooms[i].checkAvailability())
+                roomNumbers.push_back(singleRooms[i].getRoomNumber());
+    }
+    else if (normalized == "double")
+    {
+        for (int i = 0; i < doubleCount; i++)
+            if (doubleRooms[i].checkAvailability())
+                roomNumbers.push_back(doubleRooms[i].getRoomNumber());
+    }
+    else if (normalized == "suite")
+    {
+        for (int i = 0; i < suiteCount; i++)
+            if (suiteRooms[i].checkAvailability())
+                roomNumbers.push_back(suiteRooms[i].getRoomNumber());
+    }
+
+    return roomNumbers;
 }
 
 string HotelSystem::getGuestBookingsText(int guestIndex) const
@@ -935,6 +586,14 @@ string HotelSystem::getGuestBookingsText(int guestIndex) const
     if (!found)
         out << "No bookings.\n";
     return out.str();
+}
+
+vector<int> HotelSystem::getBookingIds() const
+{
+    vector<int> ids;
+    for (int i = 0; i < bookingCount; i++)
+        ids.push_back(bookings[i].getBookingID());
+    return ids;
 }
 
 string HotelSystem::getGuestBillsText(int guestIndex) const
@@ -969,6 +628,38 @@ string HotelSystem::getGuestBillsText(int guestIndex) const
     return out.str();
 }
 
+vector<int> HotelSystem::getGuestBillIds(int guestIndex, bool unpaidOnly) const
+{
+    vector<int> ids;
+    if (guestIndex < 0 || guestIndex >= guestCount)
+        return ids;
+
+    int guestId = guests[guestIndex].getGuestID();
+    for (int i = 0; i < bookingCount; i++)
+    {
+        if (bookings[i].getGuestID() != guestId)
+            continue;
+
+        for (int j = 0; j < billCount; j++)
+        {
+            if (bills[j].getBillID() == bookings[i].getBookingID())
+            {
+                if (!unpaidOnly || bills[j].getPaymentStatus() != "Paid")
+                    ids.push_back(bills[j].getBillID());
+            }
+        }
+    }
+    return ids;
+}
+
+vector<int> HotelSystem::getBillIds() const
+{
+    vector<int> ids;
+    for (int i = 0; i < billCount; i++)
+        ids.push_back(bills[i].getBillID());
+    return ids;
+}
+
 bool HotelSystem::updateGuestInfoGui(int guestIndex, string name, string phone, string address, string& message)
 {
     if (guestIndex < 0 || guestIndex >= guestCount)
@@ -997,6 +688,15 @@ bool HotelSystem::bookRoomGui(int guestIndex, string roomType, int roomNumber, s
         message = "Booking or billing limit reached.";
         return false;
     }
+    if (days <= 0)
+    {
+        message = "Total days must be greater than 0.";
+        return false;
+    }
+    if (checkIn.empty())
+        checkIn = todayDate();
+    if (checkOut.empty())
+        checkOut = futureDate(days);
 
     Room* targetRoom = 0;
     string normalized = roomType;
@@ -1407,6 +1107,37 @@ string HotelSystem::getRulesText() const
     return out.str();
 }
 
+int HotelSystem::getNextRuleId() const
+{
+    int nextId = 1;
+    for (int i = 0; i < ruleCount; i++)
+        if (rules[i].getRuleID() >= nextId)
+            nextId = rules[i].getRuleID() + 1;
+    return nextId;
+}
+
+vector<int> HotelSystem::getRuleIds() const
+{
+    vector<int> ids;
+    for (int i = 0; i < ruleCount; i++)
+        ids.push_back(rules[i].getRuleID());
+    return ids;
+}
+
+bool HotelSystem::getRuleValues(int ruleId, string& title, string& description) const
+{
+    for (int i = 0; i < ruleCount; i++)
+    {
+        if (rules[i].getRuleID() == ruleId)
+        {
+            title = rules[i].getRuleTitle();
+            description = rules[i].getDescription();
+            return true;
+        }
+    }
+    return false;
+}
+
 bool HotelSystem::addRuleGui(int ruleId, string title, string description, string& message)
 {
     if (ruleCount >= 50)
@@ -1428,6 +1159,11 @@ bool HotelSystem::addRuleGui(int ruleId, string title, string description, strin
     saveRules();
     records.addRecord("Rule added: " + title);
     return true;
+}
+
+bool HotelSystem::addRuleGui(string title, string description, string& message)
+{
+    return addRuleGui(getNextRuleId(), title, description, message);
 }
 
 bool HotelSystem::updateRuleGui(int ruleId, string title, string description, string& message)

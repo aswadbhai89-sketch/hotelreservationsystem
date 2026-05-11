@@ -1,973 +1,1251 @@
-#include <windows.h>
+#include <QtWidgets/QApplication>
+#include <QtWidgets/QComboBox>
+#include <QtWidgets/QFrame>
+#include <QtWidgets/QFormLayout>
+#include <QtWidgets/QGridLayout>
+#include <QtWidgets/QGroupBox>
+#include <QtWidgets/QHBoxLayout>
+#include <QtWidgets/QLabel>
+#include <QtWidgets/QLineEdit>
+#include <QtWidgets/QListWidget>
+#include <QtWidgets/QMainWindow>
+#include <QtWidgets/QMessageBox>
+#include <QtWidgets/QPlainTextEdit>
+#include <QtWidgets/QPushButton>
+#include <QtWidgets/QScrollArea>
+#include <QtWidgets/QSplitter>
+#include <QtWidgets/QStackedWidget>
+#include <QtWidgets/QVBoxLayout>
+#include <QtWidgets/QWidget>
+#include <QtGui/QFont>
+#include <QtCore/QCoreApplication>
+#include <QtCore/QStringList>
 #include <vector>
-#include "HotelSystem.h"
+#include "hotelsystem.h"
 
-enum AppScreen
+class HotelMainWindow : public QMainWindow
 {
-    SCREEN_HOME,
-    SCREEN_GUEST_REGISTER,
-    SCREEN_GUEST_LOGIN,
-    SCREEN_ADMIN_LOGIN,
-    SCREEN_GUEST_PANEL,
-    SCREEN_ADMIN_PANEL
-};
-
-enum ControlIds
-{
-    ID_BTN_HOME = 100,
-    ID_BTN_BACK,
-    ID_BTN_LOGOUT,
-    ID_BTN_GUEST_REGISTER,
-    ID_BTN_GUEST_LOGIN,
-    ID_BTN_ADMIN_LOGIN,
-    ID_BTN_SUBMIT,
-    ID_LIST_MENU,
-    ID_EDIT_OUTPUT,
-    ID_STATUS_LABEL,
-    ID_TITLE_LABEL,
-    ID_SUBTITLE_LABEL,
-    ID_GROUP_SIDEBAR,
-    ID_GROUP_FORM,
-    ID_GROUP_WORKSPACE,
-    ID_GROUP_HOME,
-    ID_HOME_TEXT,
-    ID_FIELD_BASE = 200,
-    ID_LABEL_BASE = 300
-};
-
-static HotelSystem gHotel;
-static AppScreen gScreen = SCREEN_HOME;
-static int gGuestIndex = -1;
-
-static HWND gMainWnd = NULL;
-static HWND gTitle = NULL;
-static HWND gSubtitle = NULL;
-static HWND gStatus = NULL;
-static HWND gGroupSidebar = NULL;
-static HWND gGroupForm = NULL;
-static HWND gGroupWorkspace = NULL;
-static HWND gGroupHome = NULL;
-static HWND gHomeText = NULL;
-static HWND gBtnHome = NULL;
-static HWND gBtnBack = NULL;
-static HWND gBtnLogout = NULL;
-static HWND gBtnGuestRegister = NULL;
-static HWND gBtnGuestLogin = NULL;
-static HWND gBtnAdminLogin = NULL;
-static HWND gBtnSubmit = NULL;
-static HWND gMenuList = NULL;
-static HWND gOutput = NULL;
-static HWND gFieldLabels[7] = {0};
-static HWND gFieldEdits[7] = {0};
-
-static HFONT gFontBase = NULL;
-static HFONT gFontTitle = NULL;
-static HFONT gFontSubtitle = NULL;
-static HFONT gFontSection = NULL;
-static HFONT gFontMono = NULL;
-
-static HBRUSH gBrushWindow = NULL;
-static HBRUSH gBrushHeader = NULL;
-
-static const char* GUEST_MENU_ITEMS[] =
-{
-    "View My Info",
-    "View Available Rooms",
-    "Book a Room",
-    "View My Bookings",
-    "View My Bills",
-    "Pay Bill",
-    "Update My Info",
-    "Hotel Policies"
-};
-
-static const char* ADMIN_MENU_ITEMS[] =
-{
-    "View All Guests",
-    "Search Guest",
-    "Delete Guest",
-    "View Rooms",
-    "Add Single Room",
-    "Add Double Room",
-    "Add Suite Room",
-    "View Bookings",
-    "Check In Booking",
-    "Check Out Booking",
-    "Cancel Booking",
-    "View Bills",
-    "Apply Discount",
-    "Detailed Bill",
-    "View Rules",
-    "Add Rule",
-    "Update Rule",
-    "View Records",
-    "Generate Report",
-    "Save Records File",
-    "Load Records File",
-    "Admin Info",
-    "Change Password",
-    "Hotel Policies"
-};
-
-string GetText(HWND hwnd)
-{
-    int len = GetWindowTextLengthA(hwnd);
-    vector<char> buf(len + 1, '\0');
-    GetWindowTextA(hwnd, &buf[0], len + 1);
-    return string(&buf[0]);
-}
-
-void SetText(HWND hwnd, const string& text)
-{
-    SetWindowTextA(hwnd, text.c_str());
-}
-
-void SetStatus(const string& text)
-{
-    SetText(gStatus, text);
-}
-
-void ShowControl(HWND hwnd, bool show)
-{
-    ShowWindow(hwnd, show ? SW_SHOW : SW_HIDE);
-}
-
-void ApplyFont(HWND hwnd, HFONT font)
-{
-    SendMessage(hwnd, WM_SETFONT, (WPARAM)font, TRUE);
-}
-
-void ShowField(int index, const string& label, const string& value, bool password = false)
-{
-    SetText(gFieldLabels[index], label);
-    SetText(gFieldEdits[index], value);
-    SendMessage(gFieldEdits[index], EM_SETPASSWORDCHAR, password ? '*' : 0, 0);
-    InvalidateRect(gFieldEdits[index], NULL, TRUE);
-    ShowControl(gFieldLabels[index], true);
-    ShowControl(gFieldEdits[index], true);
-}
-
-void HideAllFields()
-{
-    for (int i = 0; i < 7; i++)
+public:
+    HotelMainWindow()
+        : currentGuestIndex(-1)
     {
-        SetText(gFieldLabels[i], "");
-        SetText(gFieldEdits[i], "");
-        SendMessage(gFieldEdits[i], EM_SETPASSWORDCHAR, 0, 0);
-        ShowControl(gFieldLabels[i], false);
-        ShowControl(gFieldEdits[i], false);
+        setWindowTitle("Hotel Reservation System");
+        resize(1400, 900);
+
+        hotel = new HotelSystem();
+
+        stack = new QStackedWidget(this);
+        setCentralWidget(stack);
+
+        buildStyles();
+        buildHomePage();
+        buildGuestRegisterPage();
+        buildGuestLoginPage();
+        buildAdminLoginPage();
+        buildGuestDashboard();
+        buildAdminDashboard();
+
+        stack->setCurrentWidget(homePage);
     }
-}
 
-void FillMenu(const char** items, int count)
-{
-    SendMessageA(gMenuList, LB_RESETCONTENT, 0, 0);
-    for (int i = 0; i < count; i++)
-        SendMessageA(gMenuList, LB_ADDSTRING, 0, (LPARAM)items[i]);
-    SendMessage(gMenuList, LB_SETCURSEL, 0, 0);
-}
-
-int GetMenuSelection()
-{
-    return (int)SendMessage(gMenuList, LB_GETCURSEL, 0, 0);
-}
-
-int ToInt(const string& text)
-{
-    if (text.empty()) return 0;
-    return atoi(text.c_str());
-}
-
-double ToDouble(const string& text)
-{
-    if (text.empty()) return 0.0;
-    return atof(text.c_str());
-}
-
-void SetOutputText(const string& text)
-{
-    string normalized;
-    normalized.reserve(text.size() * 2);
-
-    for (size_t i = 0; i < text.size(); i++)
+    ~HotelMainWindow()
     {
-        if (text[i] == '\n')
+        delete hotel;
+    }
+
+private:
+    QString buildSignature() const
+    {
+        return "BUILD-2026-05-07-B";
+    }
+
+    QString executablePathText() const
+    {
+        return QCoreApplication::applicationFilePath();
+    }
+
+    HotelSystem* hotel;
+    int currentGuestIndex;
+
+    QStackedWidget* stack;
+
+    QWidget* homePage;
+    QWidget* guestRegisterPage;
+    QWidget* guestLoginPage;
+    QWidget* adminLoginPage;
+    QWidget* guestDashboardPage;
+    QWidget* adminDashboardPage;
+
+    QLabel* guestRegisterStatus;
+    QLabel* guestLoginStatus;
+    QLabel* adminLoginStatus;
+    QLabel* guestDashboardStatus;
+    QLabel* adminDashboardStatus;
+
+    QPlainTextEdit* guestRegisterWorkspace;
+    QPlainTextEdit* guestLoginWorkspace;
+    QPlainTextEdit* adminLoginWorkspace;
+    QPlainTextEdit* guestWorkspace;
+    QPlainTextEdit* adminWorkspace;
+
+    QListWidget* guestMenu;
+    QListWidget* adminMenu;
+
+    std::vector<QLineEdit*> guestRegisterFields;
+    std::vector<QLineEdit*> guestLoginFields;
+    std::vector<QLineEdit*> adminLoginFields;
+    std::vector<QLabel*> guestFormLabels;
+    std::vector<QLineEdit*> guestFormFields;
+    std::vector<QComboBox*> guestFormCombos;
+    std::vector<QStackedWidget*> guestFormInputs;
+    std::vector<QLabel*> adminFormLabels;
+    std::vector<QLineEdit*> adminFormFields;
+    std::vector<QComboBox*> adminFormCombos;
+    std::vector<QStackedWidget*> adminFormInputs;
+
+    QPushButton* guestActionButton;
+    QPushButton* adminActionButton;
+
+    void buildStyles()
+    {
+        QFont titleFont("Segoe UI Semibold", 19);
+        QFont subtitleFont("Segoe UI", 10);
+        QFont sectionFont("Segoe UI Semibold", 11);
+        QFont bodyFont("Segoe UI", 10);
+        QFont monoFont("Consolas", 10);
+
+        setFont(bodyFont);
+        setStyleSheet(
+            "QMainWindow, QWidget { background: #f3f6fb; color: #1f2937; }"
+            "QFrame#heroCard { background: #ffffff; border: 1px solid #d5deea; border-radius: 18px; }"
+            "QLabel#heroTitle { color: #123b6a; font: 700 28px 'Segoe UI'; background: transparent; }"
+            "QLabel#heroSubtitle { color: #516174; font: 10pt 'Segoe UI'; background: transparent; }"
+            "QGroupBox { background: white; border: 1px solid #d5deea; border-radius: 14px; margin-top: 14px; font: 600 11pt 'Segoe UI'; }"
+            "QGroupBox::title { subcontrol-origin: margin; left: 14px; padding: 0 6px; color: #123b6a; }"
+            "QPushButton { background: #123b6a; color: white; border: none; border-radius: 10px; padding: 10px 16px; font: 600 10pt 'Segoe UI'; }"
+            "QPushButton:hover { background: #18497f; }"
+            "QPushButton#secondary { background: white; color: #123b6a; border: 1px solid #c8d6e5; }"
+            "QPushButton#secondary:hover { background: #f7fafd; }"
+            "QLineEdit { background: #f9fbfd; border: 1px solid #ccd6e3; border-radius: 8px; padding: 8px 10px; }"
+            "QLineEdit:focus { border: 1px solid #123b6a; background: white; }"
+            "QListWidget { background: #fbfdff; border: 1px solid #d5deea; border-radius: 10px; padding: 6px; }"
+            "QListWidget::item { padding: 10px; border-radius: 8px; }"
+            "QListWidget::item:selected { background: #123b6a; color: white; }"
+            "QPlainTextEdit { background: #fcfdff; border: 1px solid #d5deea; border-radius: 10px; padding: 10px; font: 10pt 'Consolas'; }"
+            "QLabel#statusOk { color: #0f766e; font: 600 10pt 'Segoe UI'; }"
+            "QLabel#statusWarn { color: #b45309; font: 600 10pt 'Segoe UI'; }"
+        );
+
+        Q_UNUSED(titleFont);
+        Q_UNUSED(subtitleFont);
+        Q_UNUSED(sectionFont);
+        Q_UNUSED(monoFont);
+    }
+
+    QWidget* buildPageShell(const QString& title, const QString& subtitle, QLabel** statusOut, QWidget* body)
+    {
+        QWidget* page = new QWidget();
+        QVBoxLayout* root = new QVBoxLayout(page);
+        root->setContentsMargins(24, 24, 24, 24);
+        root->setSpacing(18);
+
+        QFrame* hero = new QFrame();
+        hero->setObjectName("heroCard");
+        QVBoxLayout* heroLayout = new QVBoxLayout(hero);
+        heroLayout->setContentsMargins(28, 24, 28, 24);
+        heroLayout->setSpacing(6);
+
+        QLabel* titleLabel = new QLabel(title);
+        titleLabel->setObjectName("heroTitle");
+        QLabel* subtitleLabel = new QLabel(subtitle);
+        subtitleLabel->setObjectName("heroSubtitle");
+        subtitleLabel->setWordWrap(true);
+
+        QLabel* statusLabel = new QLabel("Ready.");
+        statusLabel->setObjectName("heroSubtitle");
+        statusLabel->setWordWrap(true);
+
+        heroLayout->addWidget(titleLabel);
+        heroLayout->addWidget(subtitleLabel);
+        heroLayout->addSpacing(6);
+        heroLayout->addWidget(statusLabel);
+
+        root->addWidget(hero);
+        root->addWidget(body, 1);
+
+        *statusOut = statusLabel;
+        return page;
+    }
+
+    QGroupBox* createWorkspaceBox(const QString& title, QPlainTextEdit** output)
+    {
+        QGroupBox* box = new QGroupBox(title);
+        QVBoxLayout* layout = new QVBoxLayout(box);
+        *output = new QPlainTextEdit();
+        (*output)->setReadOnly(true);
+        layout->addWidget(*output);
+        return box;
+    }
+
+    QGroupBox* createFormBox(const QString& title, const QStringList& labels, std::vector<QLineEdit*>& fields, QVBoxLayout** outerLayoutOut = 0)
+    {
+        QGroupBox* box = new QGroupBox(title);
+        QVBoxLayout* outer = new QVBoxLayout(box);
+        QFormLayout* form = new QFormLayout();
+        form->setLabelAlignment(Qt::AlignLeft);
+        form->setFormAlignment(Qt::AlignTop);
+        form->setVerticalSpacing(12);
+        form->setHorizontalSpacing(16);
+
+        fields.clear();
+        for (int i = 0; i < labels.size(); ++i)
         {
-            if (i == 0 || text[i - 1] != '\r')
-                normalized += '\r';
-            normalized += '\n';
+            QLineEdit* edit = new QLineEdit();
+            form->addRow(labels[i], edit);
+            fields.push_back(edit);
         }
-        else
+        outer->addLayout(form);
+        if (outerLayoutOut)
+            *outerLayoutOut = outer;
+        return box;
+    }
+
+    void buildHomePage()
+    {
+        QWidget* body = new QWidget();
+        QHBoxLayout* bodyLayout = new QHBoxLayout(body);
+        bodyLayout->setSpacing(18);
+
+        QGroupBox* introBox = new QGroupBox("Welcome");
+        QVBoxLayout* introLayout = new QVBoxLayout(introBox);
+        QLabel* intro = new QLabel(
+            "Guest Register creates a guest account.\n"
+            "Guest Login login your account.\n"
+            "Admin Login login admin account.\n"
+        );
+        intro->setWordWrap(true);
+        introLayout->addWidget(intro);
+        introLayout->addStretch();
+
+        QGroupBox* actionBox = new QGroupBox("Start Here");
+        QVBoxLayout* actionLayout = new QVBoxLayout(actionBox);
+        QPushButton* btnGuestRegister = new QPushButton("Guest Register");
+        QPushButton* btnGuestLogin = new QPushButton("Guest Login");
+        QPushButton* btnAdminLogin = new QPushButton("Admin Login");
+        actionLayout->addWidget(btnGuestRegister);
+        actionLayout->addWidget(btnGuestLogin);
+        actionLayout->addWidget(btnAdminLogin);
+        actionLayout->addStretch();
+
+        bodyLayout->addWidget(introBox, 3);
+        bodyLayout->addWidget(actionBox, 2);
+
+        homePage = buildPageShell(
+            "Hotel Reservation System",
+            "Allow you to reserve Hotel",
+            &guestLoginStatus,
+            body
+        );
+
+        connect(btnGuestRegister, &QPushButton::clicked, this, [this]() {
+            clearEdits(guestRegisterFields);
+            setWorkspace(guestRegisterWorkspace, QString("Create a guest account."));
+            setStatusLabel(guestRegisterStatus, "Fill in the guest registration form.");
+            stack->setCurrentWidget(guestRegisterPage);
+        });
+        connect(btnGuestLogin, &QPushButton::clicked, this, [this]() {
+            clearEdits(guestLoginFields);
+            setWorkspace(guestLoginWorkspace, "Enter guest credentials and continue to the dashboard.");
+            setStatusLabel(guestLoginStatus, "Fill in the guest login form.");
+            stack->setCurrentWidget(guestLoginPage);
+        });
+        connect(btnAdminLogin, &QPushButton::clicked, this, [this]() {
+            clearEdits(adminLoginFields);
+            setWorkspace(adminLoginWorkspace, "Default admin credentials:\nUsername: admin\nPassword: 1234");
+            setStatusLabel(adminLoginStatus, "Fill in the admin login form.");
+            stack->setCurrentWidget(adminLoginPage);
+        });
+
+        stack->addWidget(homePage);
+    }
+
+    void buildGuestRegisterPage()
+    {
+        QWidget* body = new QWidget();
+        QHBoxLayout* layout = new QHBoxLayout(body);
+        layout->setSpacing(18);
+
+        QVBoxLayout* formWrapper = 0;
+        QGroupBox* formBox = createFormBox(
+            "Guest Registration",
+            QStringList() << "Username" << "Password" << "Full Name" << "Phone" << "CNIC" << "Address",
+            guestRegisterFields,
+            &formWrapper
+        );
+        guestRegisterFields[1]->setEchoMode(QLineEdit::Password);
+
+        QPushButton* backButton = new QPushButton("Back");
+        backButton->setObjectName("secondary");
+        QPushButton* submitButton = new QPushButton("Create Guest Account");
+
+        QHBoxLayout* actions = new QHBoxLayout();
+        actions->addWidget(backButton);
+        actions->addWidget(submitButton);
+        formWrapper->addSpacing(8);
+        formWrapper->addLayout(actions);
+
+        QGroupBox* workspaceBox = createWorkspaceBox("Workspace", &guestRegisterWorkspace);
+
+        layout->addWidget(formBox, 2);
+        layout->addWidget(workspaceBox, 3);
+
+        guestRegisterPage = buildPageShell(
+            "Guest Registration",
+            "Create a guest account ",
+            &guestRegisterStatus,
+            body
+        );
+
+        connect(backButton, &QPushButton::clicked, this, [this]() {
+            stack->setCurrentWidget(homePage);
+        });
+        connect(submitButton, &QPushButton::clicked, this, [this]() {
+            string message;
+            bool ok = hotel->registerGuestGui(
+                guestRegisterFields[0]->text().toStdString(),
+                guestRegisterFields[1]->text().toStdString(),
+                guestRegisterFields[2]->text().toStdString(),
+                guestRegisterFields[3]->text().toStdString(),
+                guestRegisterFields[4]->text().toStdString(),
+                guestRegisterFields[5]->text().toStdString(),
+                message
+            );
+            setStatusLabel(guestRegisterStatus, QString::fromStdString(message));
+            setWorkspace(guestRegisterWorkspace, QString::fromStdString(message));
+            showMessage(ok, "Guest Registration", QString::fromStdString(message));
+            if (ok)
+            {
+                clearEdits(guestRegisterFields);
+                stack->setCurrentWidget(homePage);
+            }
+        });
+
+        stack->addWidget(guestRegisterPage);
+    }
+
+    void buildGuestLoginPage()
+    {
+        QWidget* body = new QWidget();
+        QHBoxLayout* layout = new QHBoxLayout(body);
+        layout->setSpacing(18);
+
+        QVBoxLayout* formWrapper = 0;
+        QGroupBox* formBox = createFormBox(
+            "Guest Login",
+            QStringList() << "Username" << "Password",
+            guestLoginFields,
+            &formWrapper
+        );
+        guestLoginFields[1]->setEchoMode(QLineEdit::Password);
+
+        QPushButton* backButton = new QPushButton("Back");
+        backButton->setObjectName("secondary");
+        QPushButton* submitButton = new QPushButton("Login as Guest");
+
+        QHBoxLayout* actions = new QHBoxLayout();
+        actions->addWidget(backButton);
+        actions->addWidget(submitButton);
+        formWrapper->addSpacing(8);
+        formWrapper->addLayout(actions);
+
+        QGroupBox* workspaceBox = createWorkspaceBox("Workspace", &guestLoginWorkspace);
+
+        layout->addWidget(formBox, 2);
+        layout->addWidget(workspaceBox, 3);
+
+        guestLoginPage = buildPageShell(
+            "Guest Login",
+            "Access reservations, payment details, and personal stay information.",
+            &guestLoginStatus,
+            body
+        );
+
+        connect(backButton, &QPushButton::clicked, this, [this]() {
+            stack->setCurrentWidget(homePage);
+        });
+        connect(submitButton, &QPushButton::clicked, this, [this]() {
+            string message;
+            currentGuestIndex = hotel->loginGuestGui(
+                guestLoginFields[0]->text().toStdString(),
+                guestLoginFields[1]->text().toStdString(),
+                message
+            );
+            setStatusLabel(guestLoginStatus, QString::fromStdString(message));
+            setWorkspace(guestLoginWorkspace, QString::fromStdString(message));
+
+            if (currentGuestIndex >= 0)
+            {
+                QMessageBox::information(this, "Guest Login", "Guest login successful.");
+                clearEdits(guestLoginFields);
+                guestMenu->setCurrentRow(0);
+                refreshGuestDashboard();
+                stack->setCurrentWidget(guestDashboardPage);
+            }
+            else
+            {
+                QMessageBox::warning(this, "Guest Login Failed", QString::fromStdString(message));
+            }
+        });
+
+        stack->addWidget(guestLoginPage);
+    }
+
+    void buildAdminLoginPage()
+    {
+        QWidget* body = new QWidget();
+        QHBoxLayout* layout = new QHBoxLayout(body);
+        layout->setSpacing(18);
+
+        QVBoxLayout* formWrapper = 0;
+        QGroupBox* formBox = createFormBox(
+            "Admin Login",
+            QStringList() << "Username" << "Password",
+            adminLoginFields,
+            &formWrapper
+        );
+        adminLoginFields[1]->setEchoMode(QLineEdit::Password);
+
+        QPushButton* backButton = new QPushButton("Back");
+        backButton->setObjectName("secondary");
+        QPushButton* submitButton = new QPushButton("Login as Admin");
+
+        QHBoxLayout* actions = new QHBoxLayout();
+        actions->addWidget(backButton);
+        actions->addWidget(submitButton);
+        formWrapper->addSpacing(8);
+        formWrapper->addLayout(actions);
+
+        QGroupBox* workspaceBox = createWorkspaceBox("Workspace", &adminLoginWorkspace);
+
+        layout->addWidget(formBox, 2);
+        layout->addWidget(workspaceBox, 3);
+
+        adminLoginPage = buildPageShell(
+            "Admin Login",
+            "Open the hotel operations workspace for rooms, bookings, billing, records, and policies.",
+            &adminLoginStatus,
+            body
+        );
+
+        connect(backButton, &QPushButton::clicked, this, [this]() {
+            stack->setCurrentWidget(homePage);
+        });
+        connect(submitButton, &QPushButton::clicked, this, [this]() {
+            string message;
+            bool ok = hotel->loginAdminGui(
+                adminLoginFields[0]->text().toStdString(),
+                adminLoginFields[1]->text().toStdString(),
+                message
+            );
+            setStatusLabel(adminLoginStatus, QString::fromStdString(message));
+            setWorkspace(adminLoginWorkspace, QString::fromStdString(message));
+
+            if (ok)
+            {
+                QMessageBox::information(this, "Admin Login", "Admin login successful.");
+                clearEdits(adminLoginFields);
+                adminMenu->setCurrentRow(0);
+                refreshAdminDashboard();
+                stack->setCurrentWidget(adminDashboardPage);
+            }
+            else
+            {
+                QMessageBox::warning(this, "Admin Login Failed", QString::fromStdString(message));
+            }
+        });
+
+        stack->addWidget(adminLoginPage);
+    }
+
+    void buildGuestDashboard()
+    {
+        QWidget* body = new QWidget();
+        QHBoxLayout* layout = new QHBoxLayout(body);
+        layout->setSpacing(18);
+
+        QGroupBox* navBox = new QGroupBox("Guest Actions");
+        QVBoxLayout* navLayout = new QVBoxLayout(navBox);
+        guestMenu = new QListWidget();
+        guestMenu->addItems(QStringList()
+            << "View My Info"
+            << "View Available Rooms"
+            << "Book a Room"
+            << "View My Bookings"
+            << "View My Bills"
+            << "Pay Bill"
+            << "Update My Info"
+            << "Hotel Policies");
+        navLayout->addWidget(guestMenu);
+
+        QGroupBox* formBox = new QGroupBox("Action Form");
+        QVBoxLayout* formOuter = new QVBoxLayout(formBox);
+        QFormLayout* formLayout = new QFormLayout();
+        formLayout->setVerticalSpacing(12);
+        formLayout->setHorizontalSpacing(16);
+
+        for (int i = 0; i < 5; ++i)
         {
-            normalized += text[i];
+            QLabel* label = new QLabel();
+            QLineEdit* edit = new QLineEdit();
+            QComboBox* combo = new QComboBox();
+            QStackedWidget* input = new QStackedWidget();
+            input->addWidget(edit);
+            input->addWidget(combo);
+            guestFormLabels.push_back(label);
+            guestFormFields.push_back(edit);
+            guestFormCombos.push_back(combo);
+            guestFormInputs.push_back(input);
+            formLayout->addRow(label, input);
         }
+        guestActionButton = new QPushButton("Run Action");
+        QPushButton* guestLogoutButton = new QPushButton("Logout");
+        guestLogoutButton->setObjectName("secondary");
+        formOuter->addLayout(formLayout);
+        formOuter->addSpacing(8);
+        formOuter->addWidget(guestActionButton);
+        formOuter->addWidget(guestLogoutButton);
+        formOuter->addStretch();
+
+        QGroupBox* workspaceBox = createWorkspaceBox("Workspace", &guestWorkspace);
+
+        layout->addWidget(navBox, 2);
+        layout->addWidget(formBox, 2);
+        layout->addWidget(workspaceBox, 3);
+
+        guestDashboardPage = buildPageShell(
+            "Guest Dashboard",
+            "Professional workspace for bookings, bills, profile updates, and hotel policy review.",
+            &guestDashboardStatus,
+            body
+        );
+
+        connect(guestMenu, &QListWidget::currentRowChanged, this, [this](int) {
+            configureGuestForm();
+        });
+        connect(guestFormCombos[0], &QComboBox::currentTextChanged, this, [this](const QString&) {
+            populateGuestRoomNumbers();
+        });
+        connect(guestActionButton, &QPushButton::clicked, this, [this]() {
+            runGuestAction();
+        });
+        connect(guestLogoutButton, &QPushButton::clicked, this, [this]() {
+            currentGuestIndex = -1;
+            stack->setCurrentWidget(homePage);
+        });
+
+        stack->addWidget(guestDashboardPage);
     }
 
-    SetText(gOutput, normalized);
-}
-
-void LayoutControls()
-{
-    RECT rc;
-    GetClientRect(gMainWnd, &rc);
-
-    int width = rc.right - rc.left;
-    int height = rc.bottom - rc.top;
-    int margin = 20;
-    int headerHeight = 110;
-    int contentTop = headerHeight + 14;
-    int contentHeight = height - contentTop - margin;
-    int leftWidth = 280;
-    int formWidth = 330;
-    int workLeft = margin + leftWidth + formWidth + 30;
-    int workWidth = width - workLeft - margin;
-
-    MoveWindow(gTitle, 28, 18, 660, 36, TRUE);
-    MoveWindow(gSubtitle, 28, 56, 880, 24, TRUE);
-    MoveWindow(gStatus, 28, 84, width - 56, 20, TRUE);
-
-    MoveWindow(gBtnHome, width - 286, 24, 80, 34, TRUE);
-    MoveWindow(gBtnBack, width - 196, 24, 80, 34, TRUE);
-    MoveWindow(gBtnLogout, width - 106, 24, 80, 34, TRUE);
-
-    MoveWindow(gGroupSidebar, margin, contentTop, leftWidth, contentHeight, TRUE);
-    MoveWindow(gMenuList, margin + 16, contentTop + 30, leftWidth - 32, contentHeight - 46, TRUE);
-
-    MoveWindow(gGroupForm, margin + leftWidth + 15, contentTop, formWidth, contentHeight, TRUE);
-    for (int i = 0; i < 7; i++)
+    void buildAdminDashboard()
     {
-        int y = contentTop + 42 + (i * 56);
-        MoveWindow(gFieldLabels[i], margin + leftWidth + 30, y, formWidth - 44, 18, TRUE);
-        MoveWindow(gFieldEdits[i], margin + leftWidth + 30, y + 20, formWidth - 60, 27, TRUE);
-    }
-    MoveWindow(gBtnSubmit, margin + leftWidth + 30, contentTop + contentHeight - 56, formWidth - 60, 36, TRUE);
+        QWidget* body = new QWidget();
+        QHBoxLayout* layout = new QHBoxLayout(body);
+        layout->setSpacing(18);
 
-    MoveWindow(gGroupWorkspace, workLeft, contentTop, workWidth, contentHeight, TRUE);
-    MoveWindow(gOutput, workLeft + 16, contentTop + 30, workWidth - 32, contentHeight - 46, TRUE);
+        QGroupBox* navBox = new QGroupBox("Admin Actions");
+        QVBoxLayout* navLayout = new QVBoxLayout(navBox);
+        adminMenu = new QListWidget();
+        adminMenu->addItems(QStringList()
+            << "View All Guests"
+            << "Search Guest"
+            << "Delete Guest"
+            << "View Rooms"
+            << "Add Single Room"
+            << "Add Double Room"
+            << "Add Suite Room"
+            << "View Bookings"
+            << "Check In Booking"
+            << "Check Out Booking"
+            << "Cancel Booking"
+            << "View Bills"
+            << "Apply Discount"
+            << "Detailed Bill"
+            << "View Rules"
+            << "Add Rule"
+            << "Update Rule"
+            << "View Records"
+            << "Generate Report"
+            << "Save Records File"
+            << "Load Records File"
+            << "Admin Info"
+            << "Change Password"
+            << "Hotel Policies");
+        navLayout->addWidget(adminMenu);
 
-    MoveWindow(gGroupHome, 28, contentTop + 10, width - 56, 390, TRUE);
-    MoveWindow(gHomeText, 48, contentTop + 52, width - 96, 96, TRUE);
-    MoveWindow(gBtnGuestRegister, 48, contentTop + 176, 260, 50, TRUE);
-    MoveWindow(gBtnGuestLogin, 48, contentTop + 238, 260, 50, TRUE);
-    MoveWindow(gBtnAdminLogin, 48, contentTop + 300, 260, 50, TRUE);
-}
+        QGroupBox* formBox = new QGroupBox("Action Form");
+        QVBoxLayout* formOuter = new QVBoxLayout(formBox);
+        QFormLayout* formLayout = new QFormLayout();
+        formLayout->setVerticalSpacing(12);
+        formLayout->setHorizontalSpacing(16);
 
-void ConfigureGuestPanel();
-void ConfigureAdminPanel();
-void RenderScreen();
+        for (int i = 0; i < 5; ++i)
+        {
+            QLabel* label = new QLabel();
+            QLineEdit* edit = new QLineEdit();
+            QComboBox* combo = new QComboBox();
+            QStackedWidget* input = new QStackedWidget();
+            input->addWidget(edit);
+            input->addWidget(combo);
+            adminFormLabels.push_back(label);
+            adminFormFields.push_back(edit);
+            adminFormCombos.push_back(combo);
+            adminFormInputs.push_back(input);
+            formLayout->addRow(label, input);
+        }
+        adminActionButton = new QPushButton("Run Action");
+        QPushButton* adminLogoutButton = new QPushButton("Logout");
+        adminLogoutButton->setObjectName("secondary");
+        formOuter->addLayout(formLayout);
+        formOuter->addSpacing(8);
+        formOuter->addWidget(adminActionButton);
+        formOuter->addWidget(adminLogoutButton);
+        formOuter->addStretch();
 
-void GoHome()
-{
-    gGuestIndex = -1;
-    gScreen = SCREEN_HOME;
-    RenderScreen();
-}
+        QGroupBox* workspaceBox = createWorkspaceBox("Workspace", &adminWorkspace);
 
-void BackFromForm()
-{
-    gScreen = SCREEN_HOME;
-    RenderScreen();
-}
+        layout->addWidget(navBox, 2);
+        layout->addWidget(formBox, 2);
+        layout->addWidget(workspaceBox, 3);
 
-void LogoutCurrent()
-{
-    if (gScreen == SCREEN_ADMIN_PANEL)
-        gHotel.logoutAdminGui();
-    gGuestIndex = -1;
-    gScreen = SCREEN_HOME;
-    RenderScreen();
-}
+        adminDashboardPage = buildPageShell(
+            "Admin Dashboard",
+            "Professional workspace for guest operations, room inventory, booking control, billing, rules, and records.",
+            &adminDashboardStatus,
+            body
+        );
 
-void ConfigureGuestPanel()
-{
-    int choice = GetMenuSelection();
-    HideAllFields();
-    ShowControl(gBtnSubmit, true);
-    ShowControl(gOutput, true);
-    ShowControl(gMenuList, true);
-    SetText(gGroupSidebar, " Guest Actions ");
-    SetText(gGroupForm, " Action Form ");
-    SetText(gGroupWorkspace, " Workspace ");
+        connect(adminMenu, &QListWidget::currentRowChanged, this, [this](int) {
+            configureAdminForm();
+        });
+        connect(adminFormCombos[0], &QComboBox::currentTextChanged, this, [this](const QString&) {
+            syncAdminRuleFields();
+        });
+        connect(adminActionButton, &QPushButton::clicked, this, [this]() {
+            runAdminAction();
+        });
+        connect(adminLogoutButton, &QPushButton::clicked, this, [this]() {
+            hotel->logoutAdminGui();
+            stack->setCurrentWidget(homePage);
+        });
 
-    switch (choice)
-    {
-    case 0:
-        SetText(gBtnSubmit, "Refresh Info");
-        SetOutputText(gHotel.getGuestInfoText(gGuestIndex));
-        SetStatus("Viewing guest profile.");
-        break;
-    case 1:
-        SetText(gBtnSubmit, "Refresh Rooms");
-        SetOutputText(gHotel.getAvailableRoomsText());
-        SetStatus("Showing available rooms.");
-        break;
-    case 2:
-        SetText(gBtnSubmit, "Book Room");
-        ShowField(0, "Room Type", "");
-        ShowField(1, "Room Number", "");
-        ShowField(2, "Check-In Date", "");
-        ShowField(3, "Check-Out Date", "");
-        ShowField(4, "Total Days", "");
-        SetOutputText(gHotel.getAvailableRoomsText());
-        SetStatus("Enter booking details, then book the room.");
-        break;
-    case 3:
-        SetText(gBtnSubmit, "Refresh Bookings");
-        SetOutputText(gHotel.getGuestBookingsText(gGuestIndex));
-        SetStatus("Showing guest bookings.");
-        break;
-    case 4:
-        SetText(gBtnSubmit, "Refresh Bills");
-        SetOutputText(gHotel.getGuestBillsText(gGuestIndex));
-        SetStatus("Showing guest bills.");
-        break;
-    case 5:
-        SetText(gBtnSubmit, "Pay Bill");
-        ShowField(0, "Bill ID", "");
-        ShowField(1, "Payment Method (1/2/3)", "");
-        SetOutputText(gHotel.getGuestBillsText(gGuestIndex));
-        SetStatus("Use 1 for Cash, 2 for Card, 3 for Online.");
-        break;
-    case 6:
-        SetText(gBtnSubmit, "Update Info");
-        ShowField(0, "New Name", "");
-        ShowField(1, "New Phone", "");
-        ShowField(2, "New Address", "");
-        SetOutputText(gHotel.getGuestInfoText(gGuestIndex));
-        SetStatus("Update your guest information.");
-        break;
-    case 7:
-        SetText(gBtnSubmit, "Refresh Policies");
-        SetOutputText(gHotel.getPoliciesText());
-        SetStatus("Showing hotel policies.");
-        break;
-    }
-}
-
-void ConfigureAdminPanel()
-{
-    int choice = GetMenuSelection();
-    HideAllFields();
-    ShowControl(gBtnSubmit, true);
-    ShowControl(gOutput, true);
-    ShowControl(gMenuList, true);
-    SetText(gGroupSidebar, " Admin Actions ");
-    SetText(gGroupForm, " Action Form ");
-    SetText(gGroupWorkspace, " Workspace ");
-
-    switch (choice)
-    {
-    case 0:
-        SetText(gBtnSubmit, "Refresh Guests");
-        SetOutputText(gHotel.getAllGuestsText());
-        SetStatus("Showing all guests.");
-        break;
-    case 1:
-        SetText(gBtnSubmit, "Search Guest");
-        ShowField(0, "Guest ID", "");
-        SetOutputText(gHotel.getAllGuestsText());
-        SetStatus("Search a guest by ID.");
-        break;
-    case 2:
-        SetText(gBtnSubmit, "Delete Guest");
-        ShowField(0, "Guest ID", "");
-        SetOutputText(gHotel.getAllGuestsText());
-        SetStatus("Delete a guest by ID.");
-        break;
-    case 3:
-        SetText(gBtnSubmit, "Refresh Rooms");
-        SetOutputText(gHotel.getAllRoomsText());
-        SetStatus("Showing all rooms.");
-        break;
-    case 4:
-        SetText(gBtnSubmit, "Add Single Room");
-        ShowField(0, "Room Number", "");
-        ShowField(1, "Price", "");
-        SetOutputText(gHotel.getAllRoomsText());
-        SetStatus("Add a new single room.");
-        break;
-    case 5:
-        SetText(gBtnSubmit, "Add Double Room");
-        ShowField(0, "Room Number", "");
-        ShowField(1, "Price", "");
-        SetOutputText(gHotel.getAllRoomsText());
-        SetStatus("Add a new double room.");
-        break;
-    case 6:
-        SetText(gBtnSubmit, "Add Suite Room");
-        ShowField(0, "Room Number", "");
-        ShowField(1, "Price", "");
-        SetOutputText(gHotel.getAllRoomsText());
-        SetStatus("Add a new suite room.");
-        break;
-    case 7:
-        SetText(gBtnSubmit, "Refresh Bookings");
-        SetOutputText(gHotel.getAllBookingsText());
-        SetStatus("Showing all bookings.");
-        break;
-    case 8:
-        SetText(gBtnSubmit, "Check In");
-        ShowField(0, "Booking ID", "");
-        SetOutputText(gHotel.getAllBookingsText());
-        SetStatus("Check in a booking.");
-        break;
-    case 9:
-        SetText(gBtnSubmit, "Check Out");
-        ShowField(0, "Booking ID", "");
-        SetOutputText(gHotel.getAllBookingsText());
-        SetStatus("Check out a booking.");
-        break;
-    case 10:
-        SetText(gBtnSubmit, "Cancel Booking");
-        ShowField(0, "Booking ID", "");
-        SetOutputText(gHotel.getAllBookingsText());
-        SetStatus("Cancel a booking.");
-        break;
-    case 11:
-        SetText(gBtnSubmit, "Refresh Bills");
-        SetOutputText(gHotel.getAllBillsText());
-        SetStatus("Showing all bills.");
-        break;
-    case 12:
-        SetText(gBtnSubmit, "Apply Discount");
-        ShowField(0, "Bill ID", "");
-        ShowField(1, "Discount %", "");
-        SetOutputText(gHotel.getAllBillsText());
-        SetStatus("Apply a discount to a bill.");
-        break;
-    case 13:
-        SetText(gBtnSubmit, "Show Detailed Bill");
-        ShowField(0, "Booking ID", "");
-        SetOutputText(gHotel.getAllBillsText());
-        SetStatus("View a detailed bill by booking ID.");
-        break;
-    case 14:
-        SetText(gBtnSubmit, "Refresh Rules");
-        SetOutputText(gHotel.getRulesText());
-        SetStatus("Showing all rules.");
-        break;
-    case 15:
-        SetText(gBtnSubmit, "Add Rule");
-        ShowField(0, "Rule ID", "");
-        ShowField(1, "Title", "");
-        ShowField(2, "Description", "");
-        SetOutputText(gHotel.getRulesText());
-        SetStatus("Add a new rule.");
-        break;
-    case 16:
-        SetText(gBtnSubmit, "Update Rule");
-        ShowField(0, "Rule ID", "");
-        ShowField(1, "Title", "");
-        ShowField(2, "Description", "");
-        SetOutputText(gHotel.getRulesText());
-        SetStatus("Update an existing rule.");
-        break;
-    case 17:
-        SetText(gBtnSubmit, "Refresh Records");
-        SetOutputText(gHotel.getRecordsText());
-        SetStatus("Showing records.");
-        break;
-    case 18:
-        SetText(gBtnSubmit, "Generate Report");
-        SetOutputText(gHotel.getRecordReportText());
-        SetStatus("Showing records report.");
-        break;
-    case 19:
-        SetText(gBtnSubmit, "Save Records File");
-        SetOutputText(gHotel.getRecordReportText());
-        SetStatus("Save the current records report to file.");
-        break;
-    case 20:
-        SetText(gBtnSubmit, "Load Records File");
-        SetOutputText("Click the action button to load saved record data.");
-        SetStatus("Load records text from file.");
-        break;
-    case 21:
-        SetText(gBtnSubmit, "Refresh Admin Info");
-        SetOutputText(gHotel.getAdminInfoText());
-        SetStatus("Showing admin information.");
-        break;
-    case 22:
-        SetText(gBtnSubmit, "Change Password");
-        ShowField(0, "Old Password", "", true);
-        ShowField(1, "New Password", "", true);
-        ShowField(2, "Confirm Password", "", true);
-        SetOutputText(gHotel.getAdminInfoText());
-        SetStatus("Change the admin password.");
-        break;
-    case 23:
-        SetText(gBtnSubmit, "Refresh Policies");
-        SetOutputText(gHotel.getPoliciesText());
-        SetStatus("Showing hotel policies.");
-        break;
-    }
-}
-
-void RenderScreen()
-{
-    HideAllFields();
-    LayoutControls();
-
-    ShowControl(gTitle, true);
-    ShowControl(gSubtitle, true);
-    ShowControl(gStatus, true);
-    ShowControl(gBtnHome, true);
-
-    ShowControl(gBtnBack, false);
-    ShowControl(gBtnLogout, false);
-    ShowControl(gBtnGuestRegister, false);
-    ShowControl(gBtnGuestLogin, false);
-    ShowControl(gBtnAdminLogin, false);
-    ShowControl(gBtnSubmit, false);
-    ShowControl(gMenuList, false);
-    ShowControl(gOutput, false);
-    ShowControl(gGroupSidebar, false);
-    ShowControl(gGroupForm, false);
-    ShowControl(gGroupWorkspace, false);
-    ShowControl(gGroupHome, false);
-    ShowControl(gHomeText, false);
-
-    switch (gScreen)
-    {
-    case SCREEN_HOME:
-        SetText(gTitle, "Hotel Reservation System");
-        SetText(gSubtitle, "Desktop dashboard.");
-        SetStatus("Choose how you want to continue.");
-        ShowControl(gGroupHome, true);
-        ShowControl(gHomeText, true);
-        SetText(gGroupHome, " Welcome ");
-        SetText(gHomeText,
-            "Use Guest Register to create a guest account.\r\n"
-            "Use Guest Login to manage stays, bills, and profile information.\r\n"
-            "Use Admin Login to manage rooms, bookings, billing, rules, and records.");
-        ShowControl(gBtnGuestRegister, true);
-        ShowControl(gBtnGuestLogin, true);
-        ShowControl(gBtnAdminLogin, true);
-        break;
-    case SCREEN_GUEST_REGISTER:
-        SetText(gTitle, "Guest Registration");
-        SetText(gSubtitle, "Create a guest account with profile details and secure login credentials.");
-        SetStatus("Fill in the registration form.");
-        ShowControl(gBtnBack, true);
-        ShowControl(gBtnSubmit, true);
-        ShowControl(gOutput, true);
-        ShowControl(gGroupForm, true);
-        ShowControl(gGroupWorkspace, true);
-        SetText(gGroupForm, " Registration Form ");
-        SetText(gGroupWorkspace, " Guidance ");
-        SetText(gBtnSubmit, "Register Guest");
-        ShowField(0, "Username", "");
-        ShowField(1, "Password", "", true);
-        ShowField(2, "Guest ID", "");
-        ShowField(3, "Full Name", "");
-        ShowField(4, "Phone", "");
-        ShowField(5, "CNIC", "");
-        ShowField(6, "Address", "");
-        SetOutputText("Create a new guest account.\r\n\r\nRecommended: use a unique Guest ID and memorable username.");
-        break;
-    case SCREEN_GUEST_LOGIN:
-        SetText(gTitle, "Guest Login");
-        SetText(gSubtitle, "Access your reservations, payment details, and personal information.");
-        SetStatus("Enter guest credentials and continue.");
-        ShowControl(gBtnBack, true);
-        ShowControl(gBtnSubmit, true);
-        ShowControl(gOutput, true);
-        ShowControl(gGroupForm, true);
-        ShowControl(gGroupWorkspace, true);
-        SetText(gGroupForm, " Login Form ");
-        SetText(gGroupWorkspace, " Guidance ");
-        SetText(gBtnSubmit, "Login as Guest");
-        ShowField(0, "Username", "");
-        ShowField(1, "Password", "", true);
-        SetOutputText("Enter your guest username and password, then click Login as Guest.");
-        break;
-    case SCREEN_ADMIN_LOGIN:
-        SetText(gTitle, "Admin Login");
-        SetText(gSubtitle, "Open the hotel operations workspace for rooms, bookings, billing, records, and policies.");
-        SetStatus("Enter admin credentials and continue.");
-        ShowControl(gBtnBack, true);
-        ShowControl(gBtnSubmit, true);
-        ShowControl(gOutput, true);
-        ShowControl(gGroupForm, true);
-        ShowControl(gGroupWorkspace, true);
-        SetText(gGroupForm, " Login Form ");
-        SetText(gGroupWorkspace, " Guidance ");
-        SetText(gBtnSubmit, "Login as Admin");
-        ShowField(0, "Username", "");
-        ShowField(1, "Password", "", true);
-        SetOutputText("Default admin credentials:\r\nUsername: admin\r\nPassword: 1234");
-        break;
-    case SCREEN_GUEST_PANEL:
-        SetText(gTitle, "Guest Dashboard");
-        SetText(gSubtitle, "Professional workspace for bookings, bills, profile updates, and hotel policy review.");
-        SetStatus("Guest workspace ready.");
-        ShowControl(gBtnLogout, true);
-        ShowControl(gGroupSidebar, true);
-        ShowControl(gGroupForm, true);
-        ShowControl(gGroupWorkspace, true);
-        FillMenu(GUEST_MENU_ITEMS, sizeof(GUEST_MENU_ITEMS) / sizeof(GUEST_MENU_ITEMS[0]));
-        ConfigureGuestPanel();
-        break;
-    case SCREEN_ADMIN_PANEL:
-        SetText(gTitle, "Admin Dashboard");
-        SetText(gSubtitle, "Professional workspace for guest operations, room inventory, booking control, billing, rules, and records.");
-        SetStatus("Admin workspace ready.");
-        ShowControl(gBtnLogout, true);
-        ShowControl(gGroupSidebar, true);
-        ShowControl(gGroupForm, true);
-        ShowControl(gGroupWorkspace, true);
-        FillMenu(ADMIN_MENU_ITEMS, sizeof(ADMIN_MENU_ITEMS) / sizeof(ADMIN_MENU_ITEMS[0]));
-        ConfigureAdminPanel();
-        break;
-    }
-}
-
-void HandleGuestAction()
-{
-    string message;
-    int choice = GetMenuSelection();
-    bool ok = false;
-
-    switch (choice)
-    {
-    case 0: SetOutputText(gHotel.getGuestInfoText(gGuestIndex)); break;
-    case 1: SetOutputText(gHotel.getAvailableRoomsText()); break;
-    case 2:
-        ok = gHotel.bookRoomGui(
-            gGuestIndex,
-            GetText(gFieldEdits[0]),
-            ToInt(GetText(gFieldEdits[1])),
-            GetText(gFieldEdits[2]),
-            GetText(gFieldEdits[3]),
-            ToInt(GetText(gFieldEdits[4])),
-            message);
-        SetStatus(message);
-        SetOutputText(gHotel.getAvailableRoomsText() + "\r\n" + gHotel.getGuestBookingsText(gGuestIndex));
-        break;
-    case 3: SetOutputText(gHotel.getGuestBookingsText(gGuestIndex)); break;
-    case 4: SetOutputText(gHotel.getGuestBillsText(gGuestIndex)); break;
-    case 5:
-        ok = gHotel.payGuestBillGui(
-            gGuestIndex,
-            ToInt(GetText(gFieldEdits[0])),
-            ToInt(GetText(gFieldEdits[1])),
-            message);
-        SetStatus(message);
-        SetOutputText(gHotel.getGuestBillsText(gGuestIndex));
-        break;
-    case 6:
-        ok = gHotel.updateGuestInfoGui(
-            gGuestIndex,
-            GetText(gFieldEdits[0]),
-            GetText(gFieldEdits[1]),
-            GetText(gFieldEdits[2]),
-            message);
-        SetStatus(message);
-        SetOutputText(gHotel.getGuestInfoText(gGuestIndex));
-        break;
-    case 7: SetOutputText(gHotel.getPoliciesText()); break;
+        stack->addWidget(adminDashboardPage);
     }
 
-    if (ok)
-        MessageBoxA(gMainWnd, message.c_str(), "Success", MB_OK | MB_ICONINFORMATION);
-}
-
-void HandleAdminAction()
-{
-    string message;
-    bool ok = false;
-    int choice = GetMenuSelection();
-
-    switch (choice)
+    void clearEdits(std::vector<QLineEdit*>& fields)
     {
-    case 0: SetOutputText(gHotel.getAllGuestsText()); break;
-    case 1: SetOutputText(gHotel.getGuestByIdText(ToInt(GetText(gFieldEdits[0])))); SetStatus("Guest search completed."); break;
-    case 2: ok = gHotel.deleteGuestGui(ToInt(GetText(gFieldEdits[0])), message); SetStatus(message); SetOutputText(gHotel.getAllGuestsText()); break;
-    case 3: SetOutputText(gHotel.getAllRoomsText()); break;
-    case 4: ok = gHotel.addRoomGui("Single", ToInt(GetText(gFieldEdits[0])), ToDouble(GetText(gFieldEdits[1])), message); SetStatus(message); SetOutputText(gHotel.getAllRoomsText()); break;
-    case 5: ok = gHotel.addRoomGui("Double", ToInt(GetText(gFieldEdits[0])), ToDouble(GetText(gFieldEdits[1])), message); SetStatus(message); SetOutputText(gHotel.getAllRoomsText()); break;
-    case 6: ok = gHotel.addRoomGui("Suite", ToInt(GetText(gFieldEdits[0])), ToDouble(GetText(gFieldEdits[1])), message); SetStatus(message); SetOutputText(gHotel.getAllRoomsText()); break;
-    case 7: SetOutputText(gHotel.getAllBookingsText()); break;
-    case 8: ok = gHotel.checkInBookingGui(ToInt(GetText(gFieldEdits[0])), message); SetStatus(message); SetOutputText(gHotel.getAllBookingsText()); break;
-    case 9: ok = gHotel.checkOutBookingGui(ToInt(GetText(gFieldEdits[0])), message); SetStatus(message); SetOutputText(gHotel.getAllBookingsText()); break;
-    case 10: ok = gHotel.cancelBookingGui(ToInt(GetText(gFieldEdits[0])), message); SetStatus(message); SetOutputText(gHotel.getAllBookingsText()); break;
-    case 11: SetOutputText(gHotel.getAllBillsText()); break;
-    case 12: ok = gHotel.applyDiscountGui(ToInt(GetText(gFieldEdits[0])), ToDouble(GetText(gFieldEdits[1])), message); SetStatus(message); SetOutputText(gHotel.getAllBillsText()); break;
-    case 13: SetOutputText(gHotel.getDetailedBillText(ToInt(GetText(gFieldEdits[0])))); SetStatus("Detailed bill loaded."); break;
-    case 14: SetOutputText(gHotel.getRulesText()); break;
-    case 15: ok = gHotel.addRuleGui(ToInt(GetText(gFieldEdits[0])), GetText(gFieldEdits[1]), GetText(gFieldEdits[2]), message); SetStatus(message); SetOutputText(gHotel.getRulesText()); break;
-    case 16: ok = gHotel.updateRuleGui(ToInt(GetText(gFieldEdits[0])), GetText(gFieldEdits[1]), GetText(gFieldEdits[2]), message); SetStatus(message); SetOutputText(gHotel.getRulesText()); break;
-    case 17: SetOutputText(gHotel.getRecordsText()); break;
-    case 18: SetOutputText(gHotel.getRecordReportText()); break;
-    case 19: ok = gHotel.saveRecordsToFileGui(message); SetStatus(message); SetOutputText(gHotel.getRecordReportText()); break;
-    case 20: SetOutputText(gHotel.loadRecordsFromFileGui(message)); SetStatus(message); ok = true; break;
-    case 21: SetOutputText(gHotel.getAdminInfoText()); break;
-    case 22: ok = gHotel.changeAdminPasswordGui(GetText(gFieldEdits[0]), GetText(gFieldEdits[1]), GetText(gFieldEdits[2]), message); SetStatus(message); SetOutputText(gHotel.getAdminInfoText()); break;
-    case 23: SetOutputText(gHotel.getPoliciesText()); break;
+        for (size_t i = 0; i < fields.size(); ++i)
+            fields[i]->clear();
     }
 
-    if (ok)
-        MessageBoxA(gMainWnd, message.c_str(), "Success", MB_OK | MB_ICONINFORMATION);
-}
-
-void HandleSubmit()
-{
-    string message;
-
-    if (gScreen == SCREEN_GUEST_REGISTER)
+    void setWorkspace(QPlainTextEdit* workspace, const QString& text)
     {
-        bool ok = gHotel.registerGuestGui(
-            GetText(gFieldEdits[0]),
-            GetText(gFieldEdits[1]),
-            ToInt(GetText(gFieldEdits[2])),
-            GetText(gFieldEdits[3]),
-            GetText(gFieldEdits[4]),
-            GetText(gFieldEdits[5]),
-            GetText(gFieldEdits[6]),
-            message);
-        SetStatus(message);
-        SetOutputText(message);
+        workspace->setPlainText(text);
+    }
+
+    void setStatusLabel(QLabel* label, const QString& text)
+    {
+        label->setText(text);
+    }
+
+    void showMessage(bool ok, const QString& title, const QString& message)
+    {
         if (ok)
+            QMessageBox::information(this, title, message);
+        else
+            QMessageBox::warning(this, title, message);
+    }
+
+    void hideGuestForm()
+    {
+        for (size_t i = 0; i < guestFormLabels.size(); ++i)
         {
-            MessageBoxA(gMainWnd, message.c_str(), "Guest Registered", MB_OK | MB_ICONINFORMATION);
-            GoHome();
+            guestFormLabels[i]->hide();
+            guestFormInputs[i]->hide();
+            guestFormFields[i]->clear();
+            guestFormFields[i]->setEchoMode(QLineEdit::Normal);
+            guestFormCombos[i]->clear();
+            guestFormInputs[i]->setCurrentWidget(guestFormFields[i]);
         }
     }
-    else if (gScreen == SCREEN_GUEST_LOGIN)
+
+    void hideAdminForm()
     {
-        gGuestIndex = gHotel.loginGuestGui(GetText(gFieldEdits[0]), GetText(gFieldEdits[1]), message);
-        SetStatus(message);
-        if (gGuestIndex >= 0)
+        for (size_t i = 0; i < adminFormLabels.size(); ++i)
         {
-            MessageBoxA(gMainWnd, "Guest login successful.", "Login", MB_OK | MB_ICONINFORMATION);
-            gScreen = SCREEN_GUEST_PANEL;
-            RenderScreen();
+            adminFormLabels[i]->hide();
+            adminFormInputs[i]->hide();
+            adminFormFields[i]->clear();
+            adminFormFields[i]->setEchoMode(QLineEdit::Normal);
+            adminFormCombos[i]->clear();
+            adminFormInputs[i]->setCurrentWidget(adminFormFields[i]);
+        }
+    }
+
+    void showGuestField(int index, const QString& label, bool password = false)
+    {
+        guestFormLabels[index]->setText(label);
+        guestFormFields[index]->setEchoMode(password ? QLineEdit::Password : QLineEdit::Normal);
+        guestFormInputs[index]->setCurrentWidget(guestFormFields[index]);
+        guestFormLabels[index]->show();
+        guestFormInputs[index]->show();
+    }
+
+    void showGuestDropdown(int index, const QString& label, const QStringList& options)
+    {
+        guestFormLabels[index]->setText(label);
+        guestFormCombos[index]->clear();
+        guestFormCombos[index]->addItems(options);
+        guestFormInputs[index]->setCurrentWidget(guestFormCombos[index]);
+        guestFormLabels[index]->show();
+        guestFormInputs[index]->show();
+    }
+
+    void showAdminDropdown(int index, const QString& label, const QStringList& options)
+    {
+        adminFormLabels[index]->setText(label);
+        adminFormCombos[index]->clear();
+        adminFormCombos[index]->addItems(options);
+        adminFormInputs[index]->setCurrentWidget(adminFormCombos[index]);
+        adminFormLabels[index]->show();
+        adminFormInputs[index]->show();
+    }
+
+    void showAdminField(int index, const QString& label, bool password = false)
+    {
+        adminFormLabels[index]->setText(label);
+        adminFormFields[index]->setEchoMode(password ? QLineEdit::Password : QLineEdit::Normal);
+        adminFormInputs[index]->setCurrentWidget(adminFormFields[index]);
+        adminFormLabels[index]->show();
+        adminFormInputs[index]->show();
+    }
+
+    QString guestFieldText(int index) const
+    {
+        if (guestFormInputs[index]->currentWidget() == guestFormCombos[index])
+            return guestFormCombos[index]->currentText();
+        return guestFormFields[index]->text();
+    }
+
+    QString adminFieldText(int index) const
+    {
+        if (adminFormInputs[index]->currentWidget() == adminFormCombos[index])
+            return adminFormCombos[index]->currentText();
+        return adminFormFields[index]->text();
+    }
+
+    QStringList idOptions(const std::vector<int>& ids, const QString& emptyText) const
+    {
+        QStringList options;
+        if (ids.empty())
+            options << emptyText;
+        else
+            for (size_t i = 0; i < ids.size(); ++i)
+                options << QString::number(ids[i]);
+        return options;
+    }
+
+    void populateGuestRoomNumbers()
+    {
+        if (guestMenu->currentRow() != 2)
+            return;
+
+        QString roomType = guestFieldText(0);
+        showGuestDropdown(1, "Room Number", idOptions(hotel->getAvailableRoomNumbers(roomType.toStdString()), "No rooms available"));
+    }
+
+    void populateGuestBillOptions()
+    {
+        showGuestDropdown(0, "Bill ID", idOptions(hotel->getGuestBillIds(currentGuestIndex, true), "No unpaid bills"));
+    }
+
+    void populateAdminGuestOptions(int index, const QString& label)
+    {
+        showAdminDropdown(index, label, idOptions(hotel->getGuestIds(), "No guests"));
+    }
+
+    void populateAdminBookingOptions(int index, const QString& label)
+    {
+        showAdminDropdown(index, label, idOptions(hotel->getBookingIds(), "No bookings"));
+    }
+
+    void populateAdminBillOptions(int index, const QString& label)
+    {
+        showAdminDropdown(index, label, idOptions(hotel->getBillIds(), "No bills"));
+    }
+
+    void populateAdminRuleOptions()
+    {
+        showAdminDropdown(0, "Rule ID", idOptions(hotel->getRuleIds(), "No rules"));
+    }
+
+    void syncGuestProfileFields()
+    {
+        string name;
+        string phone;
+        string address;
+        if (hotel->getGuestProfileValues(currentGuestIndex, name, phone, address))
+        {
+            guestFormFields[0]->setText(QString::fromStdString(name));
+            guestFormFields[1]->setText(QString::fromStdString(phone));
+            guestFormFields[2]->setText(QString::fromStdString(address));
+        }
+    }
+
+    void syncAdminRuleFields()
+    {
+        if (adminMenu->currentRow() != 16)
+            return;
+
+        bool ok = false;
+        int ruleId = adminFieldText(0).toInt(&ok);
+        string title;
+        string description;
+        if (ok && hotel->getRuleValues(ruleId, title, description))
+        {
+            adminFormFields[1]->setText(QString::fromStdString(title));
+            adminFormFields[2]->setText(QString::fromStdString(description));
         }
         else
         {
-            SetOutputText(message);
-            MessageBoxA(gMainWnd, message.c_str(), "Login Failed", MB_OK | MB_ICONWARNING);
+            adminFormFields[1]->clear();
+            adminFormFields[2]->clear();
         }
     }
-    else if (gScreen == SCREEN_ADMIN_LOGIN)
+
+    void configureGuestForm()
     {
-        bool ok = gHotel.loginAdminGui(GetText(gFieldEdits[0]), GetText(gFieldEdits[1]), message);
-        SetStatus(message);
+        hideGuestForm();
+        int row = guestMenu->currentRow();
+
+        switch (row)
+        {
+        case 0:
+            guestActionButton->setText("Refresh Info");
+            setWorkspace(guestWorkspace, QString::fromStdString(hotel->getGuestInfoText(currentGuestIndex)));
+            setStatusLabel(guestDashboardStatus, "Viewing guest profile.");
+            break;
+        case 1:
+            guestActionButton->setText("Refresh Rooms");
+            setWorkspace(guestWorkspace, QString::fromStdString(hotel->getAvailableRoomsText()));
+            setStatusLabel(guestDashboardStatus, "Showing available rooms.");
+            break;
+        case 2:
+            guestActionButton->setText("Book Room");
+            showGuestDropdown(0, "Room Type", QStringList() << "Single" << "Double" << "Suite");
+            populateGuestRoomNumbers();
+            showGuestField(2, "Total Days");
+            setWorkspace(guestWorkspace, QString::fromStdString(hotel->getAvailableRoomsText()));
+            setStatusLabel(guestDashboardStatus, "Select a room and enter total days. Check-in and check-out will be filled automatically.");
+            break;
+        case 3:
+            guestActionButton->setText("Refresh Bookings");
+            setWorkspace(guestWorkspace, QString::fromStdString(hotel->getGuestBookingsText(currentGuestIndex)));
+            setStatusLabel(guestDashboardStatus, "Showing guest bookings.");
+            break;
+        case 4:
+            guestActionButton->setText("Refresh Bills");
+            setWorkspace(guestWorkspace, QString::fromStdString(hotel->getGuestBillsText(currentGuestIndex)));
+            setStatusLabel(guestDashboardStatus, "Showing guest bills.");
+            break;
+        case 5:
+            guestActionButton->setText("Pay Bill");
+            populateGuestBillOptions();
+            showGuestDropdown(1, "Payment Method", QStringList() << "1 - Cash" << "2 - Card" << "3 - Online");
+            setWorkspace(guestWorkspace, QString::fromStdString(hotel->getGuestBillsText(currentGuestIndex)));
+            setStatusLabel(guestDashboardStatus, "Choose an unpaid bill and payment method.");
+            break;
+        case 6:
+            guestActionButton->setText("Update Info");
+            showGuestField(0, "New Name");
+            showGuestField(1, "New Phone");
+            showGuestField(2, "New Address");
+            syncGuestProfileFields();
+            setWorkspace(guestWorkspace, QString::fromStdString(hotel->getGuestInfoText(currentGuestIndex)));
+            setStatusLabel(guestDashboardStatus, "Update your guest information. Change any field you want and leave the rest as-is.");
+            break;
+        case 7:
+            guestActionButton->setText("Refresh Policies");
+            setWorkspace(guestWorkspace, QString::fromStdString(hotel->getPoliciesText()));
+            setStatusLabel(guestDashboardStatus, "Showing hotel policies.");
+            break;
+        default:
+            break;
+        }
+    }
+
+    void configureAdminForm()
+    {
+        hideAdminForm();
+        int row = adminMenu->currentRow();
+
+        switch (row)
+        {
+        case 0:
+            adminActionButton->setText("Refresh Guests");
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getAllGuestsText()));
+            setStatusLabel(adminDashboardStatus, "Showing all guests.");
+            break;
+        case 1:
+            adminActionButton->setText("Search Guest");
+            populateAdminGuestOptions(0, "Guest ID");
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getAllGuestsText()));
+            break;
+        case 2:
+            adminActionButton->setText("Delete Guest");
+            populateAdminGuestOptions(0, "Guest ID");
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getAllGuestsText()));
+            break;
+        case 3:
+            adminActionButton->setText("Refresh Rooms");
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getAllRoomsText()));
+            break;
+        case 4:
+            adminActionButton->setText("Add Single Room");
+            showAdminField(0, "Room Number");
+            showAdminField(1, "Price");
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getAllRoomsText()));
+            break;
+        case 5:
+            adminActionButton->setText("Add Double Room");
+            showAdminField(0, "Room Number");
+            showAdminField(1, "Price");
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getAllRoomsText()));
+            break;
+        case 6:
+            adminActionButton->setText("Add Suite Room");
+            showAdminField(0, "Room Number");
+            showAdminField(1, "Price");
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getAllRoomsText()));
+            break;
+        case 7:
+            adminActionButton->setText("Refresh Bookings");
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getAllBookingsText()));
+            break;
+        case 8:
+            adminActionButton->setText("Check In");
+            populateAdminBookingOptions(0, "Booking ID");
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getAllBookingsText()));
+            break;
+        case 9:
+            adminActionButton->setText("Check Out");
+            populateAdminBookingOptions(0, "Booking ID");
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getAllBookingsText()));
+            break;
+        case 10:
+            adminActionButton->setText("Cancel Booking");
+            populateAdminBookingOptions(0, "Booking ID");
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getAllBookingsText()));
+            break;
+        case 11:
+            adminActionButton->setText("Refresh Bills");
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getAllBillsText()));
+            break;
+        case 12:
+            adminActionButton->setText("Apply Discount");
+            populateAdminBillOptions(0, "Bill ID");
+            showAdminField(1, "Discount %");
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getAllBillsText()));
+            break;
+        case 13:
+            adminActionButton->setText("Show Detailed Bill");
+            populateAdminBillOptions(0, "Bill ID");
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getAllBillsText()));
+            break;
+        case 14:
+            adminActionButton->setText("Refresh Rules");
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getRulesText()));
+            break;
+        case 15:
+            adminActionButton->setText("Add Rule");
+            showAdminField(1, "Title");
+            showAdminField(2, "Description");
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getRulesText()));
+            setStatusLabel(adminDashboardStatus, QString("Next Rule ID will be auto-generated: %1").arg(hotel->getNextRuleId()));
+            break;
+        case 16:
+            adminActionButton->setText("Update Rule");
+            populateAdminRuleOptions();
+            showAdminField(1, "Title");
+            showAdminField(2, "Description");
+            syncAdminRuleFields();
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getRulesText()));
+            break;
+        case 17:
+            adminActionButton->setText("Refresh Records");
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getRecordsText()));
+            break;
+        case 18:
+            adminActionButton->setText("Generate Report");
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getRecordReportText()));
+            break;
+        case 19:
+            adminActionButton->setText("Save Records File");
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getRecordReportText()));
+            break;
+        case 20:
+            adminActionButton->setText("Load Records File");
+            setWorkspace(adminWorkspace, "Click the action button to load saved record data.");
+            break;
+        case 21:
+            adminActionButton->setText("Refresh Admin Info");
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getAdminInfoText()));
+            break;
+        case 22:
+            adminActionButton->setText("Change Password");
+            showAdminField(0, "Old Password", true);
+            showAdminField(1, "New Password", true);
+            showAdminField(2, "Confirm Password", true);
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getAdminInfoText()));
+            break;
+        case 23:
+            adminActionButton->setText("Refresh Policies");
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getPoliciesText()));
+            break;
+        default:
+            break;
+        }
+    }
+
+    void refreshGuestDashboard()
+    {
+        configureGuestForm();
+    }
+
+    void refreshAdminDashboard()
+    {
+        configureAdminForm();
+    }
+
+    void runGuestAction()
+    {
+        string message;
+        bool ok = false;
+        int row = guestMenu->currentRow();
+
+        switch (row)
+        {
+        case 0:
+            setWorkspace(guestWorkspace, QString::fromStdString(hotel->getGuestInfoText(currentGuestIndex)));
+            break;
+        case 1:
+            setWorkspace(guestWorkspace, QString::fromStdString(hotel->getAvailableRoomsText()));
+            break;
+        case 2:
+            ok = hotel->bookRoomGui(
+                currentGuestIndex,
+                guestFieldText(0).toStdString(),
+                guestFieldText(1).toInt(),
+                "",
+                "",
+                guestFormFields[2]->text().toInt(),
+                message
+            );
+            setStatusLabel(guestDashboardStatus, QString::fromStdString(message));
+            setWorkspace(guestWorkspace,
+                QString::fromStdString(hotel->getAvailableRoomsText()) + "\n\n" +
+                QString::fromStdString(hotel->getGuestBookingsText(currentGuestIndex)));
+            if (ok) clearEdits(guestFormFields);
+            break;
+        case 3:
+            setWorkspace(guestWorkspace, QString::fromStdString(hotel->getGuestBookingsText(currentGuestIndex)));
+            break;
+        case 4:
+            setWorkspace(guestWorkspace, QString::fromStdString(hotel->getGuestBillsText(currentGuestIndex)));
+            break;
+        case 5:
+            ok = hotel->payGuestBillGui(
+                currentGuestIndex,
+                guestFieldText(0).toInt(),
+                guestFieldText(1).left(1).toInt(),
+                message
+            );
+            setStatusLabel(guestDashboardStatus, QString::fromStdString(message));
+            setWorkspace(guestWorkspace, QString::fromStdString(hotel->getGuestBillsText(currentGuestIndex)));
+            if (ok) clearEdits(guestFormFields);
+            break;
+        case 6:
+            ok = hotel->updateGuestInfoGui(
+                currentGuestIndex,
+                guestFormFields[0]->text().toStdString(),
+                guestFormFields[1]->text().toStdString(),
+                guestFormFields[2]->text().toStdString(),
+                message
+            );
+            setStatusLabel(guestDashboardStatus, QString::fromStdString(message));
+            setWorkspace(guestWorkspace, QString::fromStdString(hotel->getGuestInfoText(currentGuestIndex)));
+            if (ok) clearEdits(guestFormFields);
+            break;
+        case 7:
+            setWorkspace(guestWorkspace, QString::fromStdString(hotel->getPoliciesText()));
+            break;
+        default:
+            break;
+        }
+
         if (ok)
+            QMessageBox::information(this, "Guest Action", QString::fromStdString(message));
+        else if (!message.empty())
+            QMessageBox::warning(this, "Guest Action", QString::fromStdString(message));
+    }
+
+    void runAdminAction()
+    {
+        string message;
+        bool ok = false;
+        int row = adminMenu->currentRow();
+
+        switch (row)
         {
-            MessageBoxA(gMainWnd, "Admin login successful.", "Login", MB_OK | MB_ICONINFORMATION);
-            gScreen = SCREEN_ADMIN_PANEL;
-            RenderScreen();
+        case 0:
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getAllGuestsText()));
+            break;
+        case 1:
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getGuestByIdText(adminFieldText(0).toInt())));
+            setStatusLabel(adminDashboardStatus, "Guest search completed.");
+            break;
+        case 2:
+            ok = hotel->deleteGuestGui(adminFieldText(0).toInt(), message);
+            setStatusLabel(adminDashboardStatus, QString::fromStdString(message));
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getAllGuestsText()));
+            if (ok) clearEdits(adminFormFields);
+            break;
+        case 3:
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getAllRoomsText()));
+            break;
+        case 4:
+            ok = hotel->addRoomGui("Single", adminFormFields[0]->text().toInt(), adminFormFields[1]->text().toDouble(), message);
+            setStatusLabel(adminDashboardStatus, QString::fromStdString(message));
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getAllRoomsText()));
+            if (ok) clearEdits(adminFormFields);
+            break;
+        case 5:
+            ok = hotel->addRoomGui("Double", adminFormFields[0]->text().toInt(), adminFormFields[1]->text().toDouble(), message);
+            setStatusLabel(adminDashboardStatus, QString::fromStdString(message));
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getAllRoomsText()));
+            if (ok) clearEdits(adminFormFields);
+            break;
+        case 6:
+            ok = hotel->addRoomGui("Suite", adminFormFields[0]->text().toInt(), adminFormFields[1]->text().toDouble(), message);
+            setStatusLabel(adminDashboardStatus, QString::fromStdString(message));
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getAllRoomsText()));
+            if (ok) clearEdits(adminFormFields);
+            break;
+        case 7:
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getAllBookingsText()));
+            break;
+        case 8:
+            ok = hotel->checkInBookingGui(adminFieldText(0).toInt(), message);
+            setStatusLabel(adminDashboardStatus, QString::fromStdString(message));
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getAllBookingsText()));
+            if (ok) clearEdits(adminFormFields);
+            break;
+        case 9:
+            ok = hotel->checkOutBookingGui(adminFieldText(0).toInt(), message);
+            setStatusLabel(adminDashboardStatus, QString::fromStdString(message));
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getAllBookingsText()));
+            if (ok) clearEdits(adminFormFields);
+            break;
+        case 10:
+            ok = hotel->cancelBookingGui(adminFieldText(0).toInt(), message);
+            setStatusLabel(adminDashboardStatus, QString::fromStdString(message));
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getAllBookingsText()));
+            if (ok) clearEdits(adminFormFields);
+            break;
+        case 11:
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getAllBillsText()));
+            break;
+        case 12:
+            ok = hotel->applyDiscountGui(adminFieldText(0).toInt(), adminFormFields[1]->text().toDouble(), message);
+            setStatusLabel(adminDashboardStatus, QString::fromStdString(message));
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getAllBillsText()));
+            if (ok) clearEdits(adminFormFields);
+            break;
+        case 13:
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getDetailedBillText(adminFieldText(0).toInt())));
+            setStatusLabel(adminDashboardStatus, "Detailed bill loaded.");
+            break;
+        case 14:
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getRulesText()));
+            break;
+        case 15:
+            ok = hotel->addRuleGui(
+                adminFormFields[1]->text().toStdString(),
+                adminFormFields[2]->text().toStdString(),
+                message
+            );
+            setStatusLabel(adminDashboardStatus, QString::fromStdString(message));
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getRulesText()));
+            if (ok) clearEdits(adminFormFields);
+            break;
+        case 16:
+            ok = hotel->updateRuleGui(
+                adminFieldText(0).toInt(),
+                adminFormFields[1]->text().toStdString(),
+                adminFormFields[2]->text().toStdString(),
+                message
+            );
+            setStatusLabel(adminDashboardStatus, QString::fromStdString(message));
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getRulesText()));
+            if (ok) clearEdits(adminFormFields);
+            break;
+        case 17:
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getRecordsText()));
+            break;
+        case 18:
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getRecordReportText()));
+            break;
+        case 19:
+            ok = hotel->saveRecordsToFileGui(message);
+            setStatusLabel(adminDashboardStatus, QString::fromStdString(message));
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getRecordReportText()));
+            break;
+        case 20:
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->loadRecordsFromFileGui(message)));
+            setStatusLabel(adminDashboardStatus, QString::fromStdString(message));
+            ok = true;
+            break;
+        case 21:
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getAdminInfoText()));
+            break;
+        case 22:
+            ok = hotel->changeAdminPasswordGui(
+                adminFormFields[0]->text().toStdString(),
+                adminFormFields[1]->text().toStdString(),
+                adminFormFields[2]->text().toStdString(),
+                message
+            );
+            setStatusLabel(adminDashboardStatus, QString::fromStdString(message));
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getAdminInfoText()));
+            if (ok) clearEdits(adminFormFields);
+            break;
+        case 23:
+            setWorkspace(adminWorkspace, QString::fromStdString(hotel->getPoliciesText()));
+            break;
+        default:
+            break;
         }
-        else
-        {
-            SetOutputText(message);
-            MessageBoxA(gMainWnd, message.c_str(), "Login Failed", MB_OK | MB_ICONWARNING);
-        }
-    }
-    else if (gScreen == SCREEN_GUEST_PANEL)
-    {
-        HandleGuestAction();
-    }
-    else if (gScreen == SCREEN_ADMIN_PANEL)
-    {
-        HandleAdminAction();
-    }
-}
 
-void PaintHeader(HWND hwnd)
+        if (ok)
+            QMessageBox::information(this, "Admin Action", QString::fromStdString(message));
+        else if (!message.empty() && row != 0 && row != 3 && row != 7 && row != 11 && row != 14 && row != 17 && row != 18 && row != 21 && row != 23)
+            QMessageBox::warning(this, "Admin Action", QString::fromStdString(message));
+    }
+};
+
+int main(int argc, char* argv[])
 {
-    PAINTSTRUCT ps;
-    HDC hdc = BeginPaint(hwnd, &ps);
-    RECT rc;
-    GetClientRect(hwnd, &rc);
-    RECT header = rc;
-    header.bottom = 110;
-    FillRect(hdc, &header, gBrushHeader);
-    EndPaint(hwnd, &ps);
-}
-
-LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
-{
-    switch (uMsg)
-    {
-    case WM_COMMAND:
-    {
-        int id = LOWORD(wParam);
-        int code = HIWORD(wParam);
-
-        if (id == ID_BTN_HOME) { GoHome(); return 0; }
-        if (id == ID_BTN_BACK) { BackFromForm(); return 0; }
-        if (id == ID_BTN_LOGOUT) { LogoutCurrent(); return 0; }
-        if (id == ID_BTN_GUEST_REGISTER) { gScreen = SCREEN_GUEST_REGISTER; RenderScreen(); return 0; }
-        if (id == ID_BTN_GUEST_LOGIN) { gScreen = SCREEN_GUEST_LOGIN; RenderScreen(); return 0; }
-        if (id == ID_BTN_ADMIN_LOGIN) { gScreen = SCREEN_ADMIN_LOGIN; RenderScreen(); return 0; }
-        if (id == ID_BTN_SUBMIT) { HandleSubmit(); return 0; }
-        if (id == ID_LIST_MENU && code == LBN_SELCHANGE)
-        {
-            if (gScreen == SCREEN_GUEST_PANEL) ConfigureGuestPanel();
-            if (gScreen == SCREEN_ADMIN_PANEL) ConfigureAdminPanel();
-            return 0;
-        }
-        break;
-    }
-    case WM_SIZE:
-        LayoutControls();
-        return 0;
-    case WM_PAINT:
-        PaintHeader(hwnd);
-        return 0;
-    case WM_CTLCOLORSTATIC:
-    {
-        HDC hdc = (HDC)wParam;
-        HWND target = (HWND)lParam;
-        SetBkMode(hdc, TRANSPARENT);
-        if (target == gTitle || target == gSubtitle || target == gStatus)
-        {
-            SetTextColor(hdc, RGB(255, 255, 255));
-            return (LRESULT)gBrushHeader;
-        }
-        SetTextColor(hdc, RGB(38, 44, 52));
-        return (LRESULT)gBrushWindow;
-    }
-    case WM_DESTROY:
-        PostQuitMessage(0);
-        return 0;
-    }
-    return DefWindowProc(hwnd, uMsg, wParam, lParam);
-}
-
-void CreateFonts()
-{
-    gFontBase = CreateFontA(-18, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
-                            OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
-                            DEFAULT_PITCH | FF_DONTCARE, "Segoe UI");
-    gFontTitle = CreateFontA(-32, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
-                             OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
-                             DEFAULT_PITCH | FF_DONTCARE, "Segoe UI Semibold");
-    gFontSubtitle = CreateFontA(-19, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
-                                OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
-                                DEFAULT_PITCH | FF_DONTCARE, "Segoe UI");
-    gFontSection = CreateFontA(-18, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
-                               OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
-                               DEFAULT_PITCH | FF_DONTCARE, "Segoe UI Semibold");
-    gFontMono = CreateFontA(-17, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
-                            OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
-                            FIXED_PITCH | FF_MODERN, "Consolas");
-}
-
-void CreateBrushes()
-{
-    gBrushWindow = CreateSolidBrush(RGB(244, 246, 249));
-    gBrushHeader = CreateSolidBrush(RGB(17, 57, 92));
-}
-
-void CreateControls(HWND hwnd)
-{
-    CreateFonts();
-
-    gTitle = CreateWindowA("STATIC", "", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, hwnd, (HMENU)ID_TITLE_LABEL, NULL, NULL);
-    gSubtitle = CreateWindowA("STATIC", "", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, hwnd, (HMENU)ID_SUBTITLE_LABEL, NULL, NULL);
-    gStatus = CreateWindowA("STATIC", "", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, hwnd, (HMENU)ID_STATUS_LABEL, NULL, NULL);
-
-    gGroupSidebar = CreateWindowA("BUTTON", " Navigation ", WS_CHILD | WS_VISIBLE | BS_GROUPBOX, 0, 0, 0, 0, hwnd, (HMENU)ID_GROUP_SIDEBAR, NULL, NULL);
-    gGroupForm = CreateWindowA("BUTTON", " Form ", WS_CHILD | WS_VISIBLE | BS_GROUPBOX, 0, 0, 0, 0, hwnd, (HMENU)ID_GROUP_FORM, NULL, NULL);
-    gGroupWorkspace = CreateWindowA("BUTTON", " Workspace ", WS_CHILD | WS_VISIBLE | BS_GROUPBOX, 0, 0, 0, 0, hwnd, (HMENU)ID_GROUP_WORKSPACE, NULL, NULL);
-    gGroupHome = CreateWindowA("BUTTON", " Welcome ", WS_CHILD | WS_VISIBLE | BS_GROUPBOX, 0, 0, 0, 0, hwnd, (HMENU)ID_GROUP_HOME, NULL, NULL);
-    gHomeText = CreateWindowA("STATIC", "", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, hwnd, (HMENU)ID_HOME_TEXT, NULL, NULL);
-
-    gBtnHome = CreateWindowA("BUTTON", "Home", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 0, 0, 0, 0, hwnd, (HMENU)ID_BTN_HOME, NULL, NULL);
-    gBtnBack = CreateWindowA("BUTTON", "Back", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 0, 0, 0, 0, hwnd, (HMENU)ID_BTN_BACK, NULL, NULL);
-    gBtnLogout = CreateWindowA("BUTTON", "Logout", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 0, 0, 0, 0, hwnd, (HMENU)ID_BTN_LOGOUT, NULL, NULL);
-    gBtnGuestRegister = CreateWindowA("BUTTON", "Guest Register", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP, 0, 0, 0, 0, hwnd, (HMENU)ID_BTN_GUEST_REGISTER, NULL, NULL);
-    gBtnGuestLogin = CreateWindowA("BUTTON", "Guest Login", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP, 0, 0, 0, 0, hwnd, (HMENU)ID_BTN_GUEST_LOGIN, NULL, NULL);
-    gBtnAdminLogin = CreateWindowA("BUTTON", "Admin Login", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP, 0, 0, 0, 0, hwnd, (HMENU)ID_BTN_ADMIN_LOGIN, NULL, NULL);
-    gBtnSubmit = CreateWindowA("BUTTON", "Submit", WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON | WS_TABSTOP, 0, 0, 0, 0, hwnd, (HMENU)ID_BTN_SUBMIT, NULL, NULL);
-
-    gMenuList = CreateWindowA("LISTBOX", "", WS_CHILD | WS_VISIBLE | WS_BORDER | WS_VSCROLL | LBS_NOTIFY | WS_TABSTOP, 0, 0, 0, 0, hwnd, (HMENU)ID_LIST_MENU, NULL, NULL);
-    gOutput = CreateWindowExA(WS_EX_CLIENTEDGE, "EDIT", "", WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_HSCROLL |
-                              ES_MULTILINE | ES_AUTOVSCROLL | ES_AUTOHSCROLL | ES_READONLY,
-                              0, 0, 0, 0, hwnd, (HMENU)ID_EDIT_OUTPUT, NULL, NULL);
-
-    for (int i = 0; i < 7; i++)
-    {
-        gFieldLabels[i] = CreateWindowA("STATIC", "", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, hwnd, (HMENU)(ID_LABEL_BASE + i), NULL, NULL);
-        gFieldEdits[i] = CreateWindowExA(WS_EX_CLIENTEDGE, "EDIT", "", WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL | WS_TABSTOP,
-                                         0, 0, 0, 0, hwnd, (HMENU)(ID_FIELD_BASE + i), NULL, NULL);
-    }
-
-    ApplyFont(gTitle, gFontTitle);
-    ApplyFont(gSubtitle, gFontSubtitle);
-    ApplyFont(gStatus, gFontBase);
-    ApplyFont(gGroupSidebar, gFontSection);
-    ApplyFont(gGroupForm, gFontSection);
-    ApplyFont(gGroupWorkspace, gFontSection);
-    ApplyFont(gGroupHome, gFontSection);
-    ApplyFont(gHomeText, gFontSubtitle);
-    ApplyFont(gBtnHome, gFontBase);
-    ApplyFont(gBtnBack, gFontBase);
-    ApplyFont(gBtnLogout, gFontBase);
-    ApplyFont(gBtnGuestRegister, gFontSection);
-    ApplyFont(gBtnGuestLogin, gFontSection);
-    ApplyFont(gBtnAdminLogin, gFontSection);
-    ApplyFont(gBtnSubmit, gFontSection);
-    ApplyFont(gMenuList, gFontBase);
-    ApplyFont(gOutput, gFontMono);
-
-    for (int i = 0; i < 7; i++)
-    {
-        ApplyFont(gFieldLabels[i], gFontBase);
-        ApplyFont(gFieldEdits[i], gFontBase);
-    }
-}
-
-int main()
-{
-    HWND console = GetConsoleWindow();
-    if (console != NULL)
-        ShowWindow(console, SW_HIDE);
-
-    CreateBrushes();
-
-    const char* className = "HotelReservationGuiWindow";
-    WNDCLASSA wc = {};
-    wc.lpfnWndProc = WindowProc;
-    wc.hInstance = GetModuleHandle(NULL);
-    wc.lpszClassName = className;
-    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wc.hbrBackground = gBrushWindow;
-
-    RegisterClassA(&wc);
-
-    gMainWnd = CreateWindowA(
-        className,
-        "Hotel Reservation System",
-        WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
-        CW_USEDEFAULT, CW_USEDEFAULT, 1260, 820,
-        NULL, NULL, GetModuleHandle(NULL), NULL
-    );
-
-    if (gMainWnd == NULL)
-    {
-        MessageBoxA(NULL, "Unable to create the main window.", "Error", MB_OK | MB_ICONERROR);
-        return 1;
-    }
-
-    CreateControls(gMainWnd);
-    RenderScreen();
-
-    ShowWindow(gMainWnd, SW_SHOW);
-    UpdateWindow(gMainWnd);
-
-    MSG msg = {};
-    while (GetMessage(&msg, NULL, 0, 0))
-    {
-        if (!IsDialogMessage(gMainWnd, &msg))
-        {
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
-        }
-    }
-
-    return 0;
+    QApplication app(argc, argv);
+    HotelMainWindow window;
+    window.show();
+    return app.exec();
 }

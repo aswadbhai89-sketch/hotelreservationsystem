@@ -173,15 +173,19 @@ bool Guest::registerGuest(string user, string pass, int id, string fullName, str
 
 bool Guest::updateGuest(string newName, string newPhone, string newAddress, string& message)
 {
-    if (newName.empty() || newPhone.empty() || newAddress.empty())
+    if (newName.empty() && newPhone.empty() && newAddress.empty())
     {
-        message = "Name, phone, and address are required.";
+        message = "Enter at least one field to update.";
         return false;
     }
 
-    name = newName;
-    phone = newPhone;
-    address = newAddress;
+    if (!newName.empty())
+        name = newName;
+    if (!newPhone.empty())
+        phone = newPhone;
+    if (!newAddress.empty())
+        address = newAddress;
+
     message = "Guest updated.";
     return true;
 }

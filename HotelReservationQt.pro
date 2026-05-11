@@ -3,7 +3,7 @@ QT += widgets
 CONFIG += c++11 windows
 
 SOURCES += \
-    qt_main.cpp \
+    main.cpp \
     admin.cpp \
     billing.cpp \
     booking.cpp \

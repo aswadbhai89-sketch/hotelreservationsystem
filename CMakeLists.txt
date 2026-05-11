@@ -14,7 +14,7 @@ else()
 endif()
 
 add_executable(HotelReservationQt WIN32
-    qt_main.cpp
+    main.cpp
     admin.cpp
     billing.cpp
     booking.cpp
@@ -33,3 +33,4 @@ add_executable(HotelReservationQt WIN32
 
 target_include_directories(HotelReservationQt PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(HotelReservationQt PRIVATE ${QT_PACKAGE}::Widgets)
+set_target_properties(HotelReservationQt PROPERTIES OUTPUT_NAME "HotelReservationQt_BUILD_2026_05_07_B")

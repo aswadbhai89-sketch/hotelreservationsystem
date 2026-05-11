@@ -20,13 +20,17 @@
 #include "HotelException.h"
 using namespace std;
 
-void clearScreen();
-void pauseScreen();
+// Legacy console helpers kept commented out because the Qt app does not use them.
+// void clearScreen();
+// void pauseScreen();
 
 class HotelSystem
 {
 private:
     Admin admin;
+    Records records;
+    FileManager fileMgr;
+    
     Guest guests[100];
     int guestCount;
     SingleRoom singleRooms[50];
@@ -39,24 +43,24 @@ private:
     int billCount;
     Rules rules[50];
     int ruleCount;
-    Records records;
-    FileManager fileMgr;
+
 
 public:
     HotelSystem();
-    void start();
-    void adminLogin();
-    void adminMenu();
-    void guestRegister();
-    void guestLogin();
-    void guestMenu(int guestIndex);
-    void adminGuestMenu();
-    void adminRoomMenu();
-    void adminBookingMenu();
-    void adminBillingMenu();
-    void adminRulesMenu();
-    void adminRecordsMenu();
-    int selectRoom();
+    // Legacy console-only flow kept commented out because the Qt app does not use it.
+    // void start();
+    // void adminLogin();
+    // void adminMenu();
+    // void guestRegister();
+    // void guestLogin();
+    // void guestMenu(int guestIndex);
+    // void adminGuestMenu();
+    // void adminRoomMenu();
+    // void adminBookingMenu();
+    // void adminBillingMenu();
+    // void adminRulesMenu();
+    // void adminRecordsMenu();
+    // int selectRoom();
 
     void saveAll();
     void loadAll();
@@ -71,16 +75,24 @@ public:
     void saveRules();
     void loadRules();
 
+    int getNextGuestId() const;
     bool registerGuestGui(string user, string pass, int id, string name, string phone, string cnic, string address, string& message);
+    bool registerGuestGui(string user, string pass, string name, string phone, string cnic, string address, string& message);
     int loginGuestGui(string user, string pass, string& message);
     bool loginAdminGui(string user, string pass, string& message);
     void logoutAdminGui();
     bool changeAdminPasswordGui(string oldPass, string newPass, string confirmPass, string& message);
 
     string getGuestInfoText(int guestIndex) const;
+    bool getGuestProfileValues(int guestIndex, string& name, string& phone, string& address) const;
+    vector<int> getGuestIds() const;
     string getAvailableRoomsText() const;
+    vector<int> getAvailableRoomNumbers(string roomType) const;
     string getGuestBookingsText(int guestIndex) const;
+    vector<int> getBookingIds() const;
     string getGuestBillsText(int guestIndex) const;
+    vector<int> getGuestBillIds(int guestIndex, bool unpaidOnly) const;
+    vector<int> getBillIds() const;
     bool updateGuestInfoGui(int guestIndex, string name, string phone, string address, string& message);
     bool bookRoomGui(int guestIndex, string roomType, int roomNumber, string checkIn, string checkOut, int days, string& message);
     bool payGuestBillGui(int guestIndex, int billId, int method, string& message);
@@ -101,7 +113,11 @@ public:
     string getDetailedBillText(int bookingId) const;
     string getRevenueText() const;
     string getRulesText() const;
+    int getNextRuleId() const;
+    vector<int> getRuleIds() const;
+    bool getRuleValues(int ruleId, string& title, string& description) const;
     bool addRuleGui(int ruleId, string title, string description, string& message);
+    bool addRuleGui(string title, string description, string& message);
     bool updateRuleGui(int ruleId, string title, string description, string& message);
     string getRecordsText() const;
     string getRecordReportText() const;
