@@ -38,18 +38,43 @@ namespace
         return buffer;
     }
 
-    string todayDate()
+    bool parseDate(const string& text, tm& date)
     {
-        time_t now = time(0);
-        return formatDate(getLocalTime(now));
+        if (text.length() != 10 || text[2] != '/' || text[5] != '/')
+            return false;
+
+        int day = 0;
+        int month = 0;
+        int year = 0;
+        char extra = 0;
+        istringstream in(text);
+        if (!(in >> day) || in.get() != '/' || !(in >> month) || in.get() != '/' || !(in >> year) || (in >> extra))
+            return false;
+
+        tm parsed = {};
+        parsed.tm_mday = day;
+        parsed.tm_mon = month - 1;
+        parsed.tm_year = year - 1900;
+        parsed.tm_hour = 12;
+
+        time_t normalized = mktime(&parsed);
+        if (normalized == -1)
+            return false;
+
+        tm verified = getLocalTime(normalized);
+        if (verified.tm_mday != day || verified.tm_mon != month - 1 || verified.tm_year != year - 1900)
+            return false;
+
+        date = verified;
+        return true;
     }
 
-    string futureDate(int daysFromNow)
+    string futureDate(const tm& startDate, int daysFromStart)
     {
-        time_t now = time(0);
-        const time_t secondsPerDay = 24 * 60 * 60;
-        time_t future = now + static_cast<time_t>(daysFromNow) * secondsPerDay;
-        return formatDate(getLocalTime(future));
+        tm future = startDate;
+        future.tm_mday += daysFromStart;
+        time_t normalized = mktime(&future);
+        return formatDate(getLocalTime(normalized));
     }
 }
 
@@ -260,112 +285,6 @@ int HotelSystem::getNextGuestId() const
     return nextId;
 }
 
-/*
-void HotelSystem::start()
-{
-    int choice;
-    do
-    {
-        clearScreen();
-        cout << "================================" << endl;
-        cout << "   HOTEL RESERVATION SYSTEM     " << endl;
-        cout << "================================" << endl;
-        cout << "  1. Guest Register" << endl;
-        cout << "  2. Guest Login" << endl;
-        cout << "  3. Admin Login" << endl;
-        cout << "  0. Exit" << endl;
-        cout << "================================" << endl;
-        cout << "  Choice: ";
-        cin >> choice;
-
-        switch (choice)
-        {
-        case 1: clearScreen(); guestRegister(); pauseScreen(); break;
-        case 2: clearScreen(); guestLogin(); break;
-        case 3: clearScreen(); adminLogin(); break;
-        case 0: saveAll(); cout << "Goodbye.\n"; break;
-        default: cout << "Invalid.\n"; pauseScreen();
-        }
-    } while (choice != 0);
-}
-
-void HotelSystem::guestRegister()
-{
-    if (guestCount >= 100) { cout << "Limit reached.\n"; return; }
-    if (guests[guestCount].registerGuest())
-    {
-        guestCount++;
-        saveGuests();
-        records.addRecord("Guest registered.");
-    }
-}
-
-void HotelSystem::guestLogin()
-{
-    string user, pass;
-    cout << "\n----- Guest Login -----" << endl;
-    cout << "Username: "; cin >> user;
-    cout << "Password: "; cin >> pass;
-    for (int i = 0; i < guestCount; i++)
-    {
-        if (guests[i].loginGuest(user, pass))
-        { pauseScreen(); guestMenu(i); return; }
-    }
-    cout << "Login failed.\n";
-    pauseScreen();
-}
-
-void HotelSystem::guestMenu(int gi)
-{
-    // Console guest menu omitted.
-}
-
-int HotelSystem::selectRoom()
-{
-    // Console room selection omitted.
-    return -1;
-}
-
-void HotelSystem::adminLogin()
-{
-    // Console admin login omitted.
-}
-
-void HotelSystem::adminMenu()
-{
-    // Console admin menu omitted.
-}
-
-void HotelSystem::adminGuestMenu()
-{
-    // Console admin guest menu omitted.
-}
-
-void HotelSystem::adminRoomMenu()
-{
-    // Console admin room menu omitted.
-}
-
-void HotelSystem::adminBookingMenu()
-{
-    // Console admin booking menu omitted.
-}
-
-void HotelSystem::adminBillingMenu()
-{
-    // Console admin billing menu omitted.
-}
-
-void HotelSystem::adminRulesMenu()
-{
-    // Console admin rules menu omitted.
-}
-
-void HotelSystem::adminRecordsMenu()
-{
-    // Console admin records menu omitted.
-}
-*/
 
 bool HotelSystem::registerGuestGui(string user, string pass, int id, string name, string phone, string cnic, string address, string& message)
 {
@@ -694,9 +613,20 @@ bool HotelSystem::bookRoomGui(int guestIndex, string roomType, int roomNumber, s
         return false;
     }
     if (checkIn.empty())
-        checkIn = todayDate();
+    {
+        message = "Please enter a check-in date in DD/MM/YYYY format.";
+        return false;
+    }
+
+    tm checkInDate = {};
+    if (!parseDate(checkIn, checkInDate))
+    {
+        message = "Check-in date must be in DD/MM/YYYY format.";
+        return false;
+    }
+
     if (checkOut.empty())
-        checkOut = futureDate(days);
+        checkOut = futureDate(checkInDate, days);
 
     Room* targetRoom = 0;
     string normalized = roomType;
@@ -870,9 +800,14 @@ bool HotelSystem::deleteGuestGui(int guestId, string& message)
             return true;
         }
     }
+
     message = "Guest not found.";
     return false;
 }
+
+
+
+
 
 string HotelSystem::getAllRoomsText() const
 {
@@ -896,9 +831,21 @@ bool HotelSystem::addRoomGui(string roomType, int roomNumber, double price, stri
         return false;
     }
 
-    for (int i = 0; i < singleCount; i++) if (singleRooms[i].getRoomNumber() == roomNumber) { message = "Room number already exists."; return false; }
-    for (int i = 0; i < doubleCount; i++) if (doubleRooms[i].getRoomNumber() == roomNumber) { message = "Room number already exists."; return false; }
-    for (int i = 0; i < suiteCount; i++) if (suiteRooms[i].getRoomNumber() == roomNumber) { message = "Room number already exists."; return false; }
+    for (int i = 0; i < singleCount; i++) 
+        if (singleRooms[i].getRoomNumber() == roomNumber) {
+            message = "Room number already exists.";
+            return false;
+        }
+    for (int i = 0; i < doubleCount; i++) 
+        if (doubleRooms[i].getRoomNumber() == roomNumber) { 
+            message = "Room number already exists."; 
+            return false; 
+        }
+    for (int i = 0; i < suiteCount; i++) 
+        if (suiteRooms[i].getRoomNumber() == roomNumber) { 
+            message = "Room number already exists."; 
+            return false; 
+        }
 
     string normalized = roomType;
     for (size_t i = 0; i < normalized.length(); i++)
@@ -906,17 +853,26 @@ bool HotelSystem::addRoomGui(string roomType, int roomNumber, double price, stri
 
     if (normalized == "single")
     {
-        if (singleCount >= 50) { message = "Single room limit reached."; return false; }
+        if (singleCount >= 50) { 
+            message = "Single room limit reached."; 
+            return false; 
+        }
         singleRooms[singleCount++] = SingleRoom(roomNumber, price);
     }
     else if (normalized == "double")
     {
-        if (doubleCount >= 50) { message = "Double room limit reached."; return false; }
+        if (doubleCount >= 50) { 
+            message = "Double room limit reached."; 
+            return false; 
+        }
         doubleRooms[doubleCount++] = DoubleRoom(roomNumber, price);
     }
     else if (normalized == "suite")
     {
-        if (suiteCount >= 50) { message = "Suite room limit reached."; return false; }
+        if (suiteCount >= 50) { 
+            message = "Suite room limit reached."; 
+            return false; 
+        }
         suiteRooms[suiteCount++] = SuiteRoom(roomNumber, price);
     }
     else

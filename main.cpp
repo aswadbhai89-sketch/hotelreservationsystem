@@ -843,9 +843,10 @@ private:
             guestActionButton->setText("Book Room");
             showGuestDropdown(0, "Room Type", QStringList() << "Single" << "Double" << "Suite");
             populateGuestRoomNumbers();
-            showGuestField(2, "Total Days");
+            showGuestField(2, "Check-In Date (DD/MM/YYYY)");
+            showGuestField(3, "Total Days");
             setWorkspace(guestWorkspace, QString::fromStdString(hotel->getAvailableRoomsText()));
-            setStatusLabel(guestDashboardStatus, "Select a room and enter total days. Check-in and check-out will be filled automatically.");
+            setStatusLabel(guestDashboardStatus, "Select a room, enter a manual check-in date, and provide total days. Check-out will be calculated from your check-in date.");
             break;
         case 3:
             guestActionButton->setText("Refresh Bookings");
@@ -1045,9 +1046,9 @@ private:
                 currentGuestIndex,
                 guestFieldText(0).toStdString(),
                 guestFieldText(1).toInt(),
+                guestFieldText(2).toStdString(),
                 "",
-                "",
-                guestFormFields[2]->text().toInt(),
+                guestFormFields[3]->text().toInt(),
                 message
             );
             setStatusLabel(guestDashboardStatus, QString::fromStdString(message));
